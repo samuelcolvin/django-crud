@@ -20,5 +20,6 @@ from tests.sport import views
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),
-    url(r'^towns/', include(views.TownController.as_views())),
+    url(r'^towns/', include(views.TownController.as_views('town'))),
+    url(r'^teams/', include(views.TeamController.as_views('team'))),
 ]

@@ -23,7 +23,6 @@ def maybe_call(value_or_func, *args, **kwargs):
 
 
 class ButtonMixin:
-    title = None
     buttons = []
 
     def back_url(self):
@@ -39,7 +38,7 @@ class ButtonMixin:
         else:
             return None
 
-    def _show_button(self, button):
+    def check_show_button(self, button):
         if button is None or ('url' in button and button['url'] is None):
             return False
         if not isinstance(button, dict):
@@ -51,12 +50,12 @@ class ButtonMixin:
         show_if = self.getattr(button['show_if'])
         return bool(maybe_call(show_if))
 
-    def _process_buttons(self, button_group):
+    def process_buttons(self, button_group):
         if not button_group:
             return []
         if isinstance(button_group, list):
-            return [self._process_buttons(button) for button in button_group if self._show_button(button)]
-        return self._process_button(button_group)
+            return [self.process_buttons(button) for button in button_group if self.check_show_button(button)]
+        return self.process_button(button_group)
 
     def get_url(self, text):
         if text.startswith('func|'):
@@ -70,10 +69,10 @@ class ButtonMixin:
                 raise AttrCrudError('Model instance "{!r}" has no "get_absolute_url" method'.format(value))
         return value
 
-    def _process_button(self, button):
+    def process_button(self, button):
         if isinstance(button, str):
             button = {
-                'text': self._get_short_description(button) or button,
+                'text': self.get_sub_attr(button) or button,
                 'url': button,
             }
         elif isinstance(button, tuple):
@@ -90,12 +89,12 @@ class ButtonMixin:
             if isinstance(button['dropdown'], str) and button['dropdown'].startswith('func|'):
                 fname = button['dropdown'].split('|', 1)[1]
                 button['dropdown'] = self.getattr(fname)()
-            button['dropdown'] = map(self._process_button, button['dropdown'])
+            button['dropdown'] = map(self.process_button, button['dropdown'])
         else:
             raise SetupCrudError('neither "url" nor "dropdown" found in button: {!r}'.format(button))
         return button
 
-    def _get_short_description(self, attr_name, obj=None, prop_name='short_description'):
+    def get_sub_attr(self, attr_name, obj=None, prop_name='short_description'):
         """
         get a property of an object's attribute by name.
         :param obj: object to look at
@@ -109,7 +108,9 @@ class ButtonMixin:
             attr = self.getattr(attr_name, None)
 
         if attr:
-            return getattr(attr, prop_name, None)
+            v = getattr(attr, prop_name, None)
+            if v is not None:
+                return v.format(verbose_name=self.model._meta.verbose_name)
 
     def _process_local_function(self, field_info, obj):
         return getattr(self, field_info.attr_name)(obj)
@@ -117,19 +118,9 @@ class ButtonMixin:
     def get_buttons(self):
         return self.buttons
 
-    def get_process_buttons(self):
-        return self._process_buttons(self.get_buttons())
-
-    def get_title(self):
-        return self.title or ''
-
     def get_context_data(self, **kwargs):
-        kwargs.update(
-            title=self.get_title(),
-            buttons=self.get_process_buttons(),
-        )
-        context = super(ButtonMixin, self).get_context_data(**kwargs)
-        return context
+        kwargs['buttons'] = self.process_buttons(self.get_buttons()),
+        return super(ButtonMixin, self).get_context_data(**kwargs)
 
 
 RENDER_MAILTO = getattr(settings, 'RENDER_MAILTO', True)
@@ -189,8 +180,6 @@ class FormatMixin:
             return self.fmt_email_field(value)
         elif isinstance(field, models.URLField):
             return self.fmt_url_field(value)
-        # elif isinstance(field, PercentageField):
-        #     return '%0.2f%%' % value
         elif isinstance(value, bool):
             return self.fmt_bool(value)
         elif isinstance(value, (list, tuple, QuerySet)):
@@ -215,6 +204,8 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
 
     #: an instance of django.db.models.Model to be displayed, this is already required for ListView or DetailView
     model = None
+
+    title = None
 
     #: list of references to attributes of instances of the model, items maybe
     #: * field names
@@ -268,19 +259,21 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         :return: the context
         """
         context = super(ItemDisplayMixin, self).get_context_data(**kwargs)
-        context['gen_object_short'] = self.gen_object_short
-        context['gen_object_short_with_column'] = self.gen_object_short_with_column
-        context['column_css'] = self.column_css
-        context['gen_object_long'] = self.gen_object_long
-        context['get_item_title'] = self.get_item_title
-        context['plural_name'] = self._model_meta.verbose_name_plural.title()
-        if not context['title']:
-            context['title'] = context['plural_name']
-        context['detail_view'] = getattr(self, 'get_detail_view_url', lambda: self.detail_view)()
-        context['get_without_page'] = self.request.GET.copy()
-        if context['get_without_page'].get('page'):
-            del context['get_without_page']['page']
+        plural_name = self._model_meta.verbose_name_plural
+        context.update(
+            gen_object_short=self.gen_object_short,
+            gen_object_short_with_column=self.gen_object_short_with_column,
+            column_css=self.column_css,
+            gen_object_long=self.gen_object_long,
+            get_item_title=self.get_item_title,
+            plural_name=plural_name,
+            title=self.get_title() or plural_name,
+            detail_view=getattr(self, 'get_detail_view_url', lambda: self.detail_view)(),
+        )
         return context
+
+    def get_title(self):
+        return self.title
 
     def get_queryset(self):
         """
@@ -391,7 +384,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
             field_info.attr_name = field_info.attr_name.split('|')[1]
             field_info.field = self._LOCAL_FUNCTION
             if field_info.verbose_name is None:
-                field_info.verbose_name = self._get_short_description(field_info.attr_name)
+                field_info.verbose_name = self.get_sub_attr(field_info.attr_name)
                 field_info.verbose_name = field_info.verbose_name or field_info.attr_name
             return field_info
 
@@ -408,23 +401,23 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         # find verbose name if it's None so far
         if field_info.verbose_name is None:
             # priority_short_description has priority over field.verbose_name even when it's on a related model
-            field_info.verbose_name = self._get_short_description(attr_name_part, model, 'priority_short_description')
+            field_info.verbose_name = self.get_sub_attr(attr_name_part, model, 'priority_short_description')
             if not field_info.verbose_name:
                 if field_info.field:
                     field_info.verbose_name = field_info.field.verbose_name
                 else:
-                    field_info.verbose_name = self._get_short_description(attr_name_part, model)
+                    field_info.verbose_name = self.get_sub_attr(attr_name_part, model)
                 if not field_info.verbose_name:
                     field_info.verbose_name = field_info.attr_name
 
         # find help text if it's None so far
         if field_info.help_text is None:
-            field_info.help_text = self._get_short_description(attr_name_part, model, 'priority_help_text')
+            field_info.help_text = self.get_sub_attr(attr_name_part, model, 'priority_help_text')
             if not field_info.help_text:
                 if field_info.field:
                     field_info.help_text = field_info.field.help_text
                 else:
-                    field_info.help_text = self._get_short_description(attr_name_part, model, 'help_text')
+                    field_info.help_text = self.get_sub_attr(attr_name_part, model, 'help_text')
         return field_info
 
     @staticmethod

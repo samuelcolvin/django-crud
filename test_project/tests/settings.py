@@ -66,6 +66,8 @@ TEMPLATES = [
     },
 ]
 
+BASE_TEMPLATE = 'base.jinja'
+
 WSGI_APPLICATION = 'tests.wsgi.application'
 
 DATABASES = {

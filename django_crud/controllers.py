@@ -13,7 +13,6 @@ from .plumbing import CtrlViewMixin, CtrlItemDisplayMixin
 
 class VanillaController:
     model = None
-    name_prefix = None
 
     list_template_name = None
     detail_template_name = None
@@ -122,14 +121,10 @@ class VanillaController:
 
         return TmpCreateView.as_view(self)
 
-    def get_name_prefix(self):
-        return self.name_prefix or self.model.__name__.lower()
-
     @classonlymethod
-    def as_views(cls):
+    def as_views(cls, name_prefix):
         ctrl = cls()
         url_patterns = []
-        name_prefix = ctrl.get_name_prefix()
 
         list_view = ctrl.list_view and ctrl.list_view()
         if list_view:
@@ -181,4 +176,4 @@ class RichController(VanillaController):
 
     def add_item_button(self):
         return self.relative_url('create')
-    add_item_button.short_description = _('Add Item')
+    add_item_button.short_description = _('Add {verbose_name}')

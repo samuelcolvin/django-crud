@@ -17,7 +17,7 @@ class Team(models.Model):
     name = models.CharField(max_length=255)
     owner = models.CharField(max_length=255)
     home_town = models.ForeignKey(Town)
-    details = models.TextField()
+    details = models.TextField(null=True, blank=True)
 
 
 class Player(models.Model):
