@@ -1,5 +1,7 @@
-from django_jinja import library
+from django.utils.html import escape
+from django.utils.safestring import SafeData, mark_safe
 from jinja2 import Undefined
+from django_jinja import library
 
 
 @library.test(name='iterable')
@@ -12,3 +14,14 @@ def is_iterable(obj):
     if isinstance(obj, Undefined):
         return False
     return hasattr(obj, '__iter__')
+
+
+@library.filter
+def paragraphs(text):
+    """
+    Add line breaks to text to implement line breaks
+    """
+    if isinstance(text, SafeData):
+        return text
+    text = escape(text)
+    return mark_safe(u'<p class="no-margin">%s</p>' % text.replace(u'\n', u'</p>\n<p class="no-margin">'))

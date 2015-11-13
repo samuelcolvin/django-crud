@@ -1,3 +1,4 @@
+from django.core.urlresolvers import NoReverseMatch
 
 
 class CrudError(Exception):
@@ -9,4 +10,8 @@ class AttrCrudError(AttributeError, CrudError):
 
 
 class SetupCrudError(AssertionError, CrudError):
+    pass
+
+
+class ReverseCrudError(NoReverseMatch, CrudError):
     pass

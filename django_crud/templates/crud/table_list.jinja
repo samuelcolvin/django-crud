@@ -10,7 +10,7 @@
         <table class="table">
           <thead>
           <tr>
-            {% for column, name, value, css_classes in gen_object_short_with_column(object_list[0]) %}
+            {% for column, name, value, css_classes in view.gen_object_short_with_column(object_list[0]) %}
               <th class="{{ css_classes }}">{{ name }}</th>
             {% else %}
               <th>{{ view.model._meta.verbose_name }}</th>
@@ -20,14 +20,14 @@
           <tbody>
           {% for object in object_list %}
             <tr>
-              {% for  column, name, value, css_classes in gen_object_short_with_column(object) %}
-                {% if loop.index == 1 and detail_view %}
-                  <td class="{{ css_classes }}"><a href="{{ url(detail_view, pk=object.pk) }}">{{ value }}</a></td>
-                {% else %}
-                  <td class="{{ css_classes }}">{{ value }}</td>
-                {% endif %}
+              {% for  column, name, value, css_classes in view.gen_object_short_with_column(object) %}
+                <td class="{{ css_classes }}">
+                  {{ value }}
+                </td>
               {% else %}
-                <td><a href="#">{{ object }}</a></td>
+                <td>
+                  <a href="{{ view.get_detail_url(object) }}">{{ object }}</a>
+                </td>
               {% endfor %}
             </tr>
           {% endfor %}
@@ -35,7 +35,7 @@
         </table>
         {{ display.pagination(page_obj, get_without_page) }}
       {% else %}
-        <h3>{% trans %}No {{ plural_name }} found{% endtrans %}</h3>
+        <h3>{% trans %}No {{ plural_model_name }} found{% endtrans %}</h3>
       {% endif %}
     </div>
   </div>

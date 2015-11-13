@@ -1,19 +1,17 @@
 import datetime
 import logging
-from functools import update_wrapper
 from decimal import Decimal
 
 from django.core.urlresolvers import reverse, NoReverseMatch
 from django.conf import settings
 from django.db import models
 from django.db.models.query import QuerySet
-from django.utils.decorators import classonlymethod
-from django.utils.safestring import mark_safe, SafeBytes
+from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.utils.functional import cached_property
 from django.utils.formats import date_format, time_format, number_format
 
-from .exceptions import AttrCrudError, SetupCrudError
+from .exceptions import AttrCrudError, SetupCrudError, ReverseCrudError
 
 logger = logging.getLogger('django')
 
@@ -33,7 +31,7 @@ class ButtonMixin:
             return getattr(self, name)
         elif hasattr(self, 'object'):
             return getattr(self.object, name)
-        elif issubclass(alt, Exception):
+        elif isinstance(alt, type) and issubclass(alt, Exception):
             raise alt('%s not found on %s instance or self.object' % (name, self.__class__.__name__))
         else:
             return None
@@ -53,7 +51,7 @@ class ButtonMixin:
     def process_buttons(self, button_group):
         if not button_group:
             return []
-        if isinstance(button_group, list):
+        if not isinstance(button_group, (dict, str)):
             return [self.process_buttons(button) for button in button_group if self.check_show_button(button)]
         return self.process_button(button_group)
 
@@ -74,13 +72,6 @@ class ButtonMixin:
             button = {
                 'text': self.get_sub_attr(button) or button,
                 'url': button,
-            }
-        elif isinstance(button, tuple):
-            if len(button) != 2:
-                raise SetupCrudError('tuple button definitions should have 2 elements, got: {!r}'.format(button))
-            button = {
-                'text': button[0],
-                'url': button[1],
             }
 
         if 'url' in button:
@@ -219,9 +210,8 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
     display_items = []
 
     #: subset of display_items which are considered "long" eg. TextField's which should be displayed
-    #: full width not in columns, if in long_items an attribute will be yielded by gen_object_long
+    #: full width not in columns, long_items will be yielded by gen_object_long
     #: otherwise by gen_object_short
-    long_items = []
 
     #: field to order the model by, if None no ordering is performed here
     order_by = None
@@ -229,16 +219,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
     #: number of items to show on each each page
     paginate_by = 20
 
-    #: name of view showing details of the model suitable for passing to reverse
-    #: this is passed to the template and may be left blank when this actually is a detail view
-    detail_view = None
-
-    #: whether to filter AttributeValue's on list_show = True
-    filter_show_list = False
-
     column_css = {}
-
-    _LOCAL_FUNCTION = 'func!'
 
     def __init__(self):
         self._model_meta = self.model._meta
@@ -246,29 +227,15 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         self._extra_attrs = []
 
     def get_context_data(self, **kwargs):
-        """
-        Overrides standard the standard get_context_data to provide the following in the context:
-            gen_object_short: generator for short attributes of each item
-            gen_object_long: generator for long attributes of each item
-            get_item_title: returns the title of any object
-            plural_name: the plural name of the model
-            title: if not already set is set to plural_name
-            detail_view: from above
-
-        :param kwargs: standard get_context_data kwargs
-        :return: the context
-        """
         context = super(ItemDisplayMixin, self).get_context_data(**kwargs)
         plural_name = self._model_meta.verbose_name_plural
         context.update(
             gen_object_short=self.gen_object_short,
             gen_object_short_with_column=self.gen_object_short_with_column,
-            column_css=self.column_css,
             gen_object_long=self.gen_object_long,
-            get_item_title=self.get_item_title,
-            plural_name=plural_name,
+            model_name=self._model_meta.verbose_name,
+            plural_model_name=plural_name,
             title=self.get_title() or plural_name,
-            detail_view=getattr(self, 'get_detail_view_url', lambda: self.detail_view)(),
         )
         return context
 
@@ -285,6 +252,17 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
             qs = qs.order_by(*self.order_by)
         return qs
 
+    def get_detail_url(self, obj):
+        """
+        Only relevant on list view.
+        :param obj: instance of model to get url for
+        Returns: url of
+        """
+        if hasattr(obj, 'get_absolute_url'):
+            return obj.get_absolute_url()
+        else:
+            raise AttrCrudError('Model instance "{!r}" has no "get_absolute_url" method'.format(obj))
+
     def gen_object_short(self, obj, inc_help_text=False):
         """
         Generator of (name, value) pairs which are short for a given object.
@@ -299,9 +277,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
 
     def gen_object_short_with_column(self, obj):
         """
-        Generator of (column, name, value) pairs which are short for a given object.
-
-        :yield: (column, name, value).
+        Generator of (column, name, value, css_classes) tuples which are short for a given object.
         """
         for col, (name, value) in zip(self.get_display_items(), self.gen_object_short(obj)):
             col_name = col
@@ -322,18 +298,6 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
             if field_info.is_long:
                 yield self._display_value(obj, field_info, inc_help_text)
 
-    def get_item_title(self, obj):
-        """
-        returns the title of an instance of model, the default is dumb and just calls str. But can be
-        override to provide more intelligent functionality.
-
-        This is made available in the context to be used in templates.
-
-        :param obj: an instance of model.
-        :return: it's title (or name)
-        """
-        return str(obj)
-
     @cached_property
     def _item_info(self):
         """
@@ -342,7 +306,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         After the first call the list is cached to improve performance.
         :return: list of tuples for each item in display_items
         """
-        return map(self._getattr_info, self._all_display_items)
+        return map(self._getattr_info, self.get_display_items())
 
     def get_display_items(self):
         """
@@ -351,41 +315,19 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         """
         return self.display_items
 
-    @cached_property
-    def _all_display_items(self):
-        """
-        all items to show from both display_items and long_items.
-        """
-        display_items = tuple(self.get_display_items())
-        check_disp_items = [item[1] if isinstance(item, tuple) else item for item in display_items]
-        return display_items + tuple(filter(lambda i: i not in check_disp_items, self.long_items))
-
     def _getattr_info(self, attr_name):
         """
-        Finds the values for each tuple returned by _item_info.
+        Finds the values for each item returned by _item_info.
 
         :param attr_name: value direct from display_items
         :return: FieldInfo instance
         """
-        field_info = FieldInfo(attr_name, long_items=self.long_items)
-        if isinstance(field_info.attr_name, tuple):
-            if len(field_info.attr_name) == 2:
-                field_info.verbose_name, field_info.attr_name = field_info.attr_name
-            elif len(field_info.attr_name) == 3:
-                field_info.verbose_name, field_info.attr_name, field_info.help_text = field_info.attr_name
-            else:
-                raise Exception('display_item tuples must be 2 or 3 in length, not %d' % len(field_info.attr_name))
+        field_info = FieldInfo(attr_name)
 
-        if field_info.attr_name.startswith('rev|'):
-            parts = field_info.attr_name.split('|', 2)
-            _, field_info.rev_view_name, field_info.attr_name = parts
-
-        if field_info.attr_name.startswith('func|'):
-            field_info.attr_name = field_info.attr_name.split('|')[1]
-            field_info.field = self._LOCAL_FUNCTION
+        if field_info.is_func:
             if field_info.verbose_name is None:
-                field_info.verbose_name = self.get_sub_attr(field_info.attr_name)
-                field_info.verbose_name = field_info.verbose_name or field_info.attr_name
+                field_info.verbose_name = self.get_sub_attr(field_info.attr_name) or field_info.attr_name
+                field_info.help_text = self.get_sub_attr(field_info.attr_name, 'help_text')
             return field_info
 
         model, meta, field_names = self.model, self._model_meta, self._field_names
@@ -440,12 +382,14 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         :param inc_help_text: whether or not to return help text as middle value of the tuple
         :return: tuple containing (verbose_name, help_text, value)
         """
-        if field_info.field == self._LOCAL_FUNCTION:
+        if field_info.is_func:
             value = self.getattr(field_info.attr_name)(obj)
         else:
             value = self._get_object_value(obj, field_info.attr_name)
         url = None
-        if field_info.rev_view_name and hasattr(value, 'pk'):
+        if field_info.detail_view_link:
+            url = self.get_detail_url(obj)
+        elif field_info.rev_view_name and hasattr(value, 'pk'):
             rev_tries = [
                 {'viewname': field_info.rev_view_name},
                 {'viewname': field_info.rev_view_name, 'args': (value.pk,)},
@@ -458,17 +402,14 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
                 else:
                     break
             if url is None:
-                logger.error('No reverse found for "%s"' % field_info.rev_view_name)
+                raise ReverseCrudError('No reverse found for "%s"' % field_info.rev_view_name)
 
-        if field_info.field != self._LOCAL_FUNCTION:
-            value = self.convert_to_string(value, field_info.field)
+        if field_info.is_func:
+            value = self.format_value(value, field_info.field)
 
-        if field_info.rev_view_name and url:
+        if url:
             value = mark_safe('<a href="%s">%s</a>' % (url, escape(value)))
 
-        # Ensure returning unicode.
-        if isinstance(value, str) and not isinstance(value, SafeBytes):
-            value = str(value)
         if inc_help_text:
             return field_info.verbose_name, field_info.help_text, value
         else:
@@ -498,70 +439,38 @@ class FieldInfo(object):
     verbose_name: the verbose name of that field
     help_text: help text for this field, None if not supplied
     rev_view_name: view name to reverse to get item url, None if no reverse link
-    is_long: boolean indicating if the field should be considered "long" (eg. is in long_items)
+    is_long: boolean indicating if the field should be considered "long"
     """
     field = None
     verbose_name = None
     help_text = None
     rev_view_name = None
+    detail_view_link = False
+    is_long = False
+    is_func = False
 
-    def __init__(self, attr_name, long_items):
+    def __init__(self, attr_name):
         self.attr_name = attr_name
-        self._long_items = set(long_items)
-        for item in long_items:
-            if item.startswith('func|'):
-                self._long_items.add(item.replace('func|', ''))
+        if isinstance(self.attr_name, tuple):
+            if len(self.attr_name) == 2:
+                self.verbose_name, self.attr_name = self.attr_name
+            elif len(self.attr_name) == 3:
+                self.verbose_name, self.attr_name, self.help_text = self.attr_name
+            else:
+                raise SetupCrudError('display_item tuples must be 2 or 3 in length, not %d' % len(self.attr_name))
 
-    @cached_property
-    def is_long(self):
-        return self.attr_name in self._long_items
+        if self.attr_name.startswith('$'):
+            self.attr_name = self.attr_name[1:]
+            self.is_long = True
 
+        if self.attr_name.startswith('@'):
+            self.attr_name = self.attr_name[1:]
+            self.detail_view_link = True
 
-class CtrlViewMixin:
-    ctrl = None
+        elif self.attr_name.startswith('rev|'):
+            parts = self.attr_name.split('|', 2)
+            _, self.rev_view_name, self.attr_name = parts
 
-    @classonlymethod
-    def as_view(cls, ctrl, **initkwargs):
-        """
-        unchanged from super method except for the 4 marked lines below
-        """
-        for key in initkwargs:
-            if key in cls.http_method_names:
-                raise TypeError("You tried to pass in the %s method name as a "
-                                "keyword argument to %s(). Don't do that."
-                                % (key, cls.__name__))
-            if not hasattr(cls, key):
-                raise TypeError("%s() received an invalid keyword %r. as_view "
-                                "only accepts arguments that are already "
-                                "attributes of the class." % (cls.__name__, key))
-
-        def view(request, *args, **kwargs):
-            # { changed
-            self = cls(ctrl, **initkwargs)
-            self.request = ctrl.request = request
-            self.args = ctrl.args = args
-            self.kwargs = ctrl.kwargs = kwargs
-            # }
-            if hasattr(self, 'get') and not hasattr(self, 'head'):
-                self.head = self.get
-            return self.dispatch(request, *args, **kwargs)
-
-        # take name and docstring from class
-        update_wrapper(view, cls, updated=())
-
-        # and possible attributes set by decorators
-        # like csrf_exempt from dispatch
-        update_wrapper(view, cls.dispatch, assigned=())
-        return view
-
-    def get_context_data(self, **kwargs):
-        context = super(CtrlViewMixin, self).get_context_data(**kwargs)
-        context.update(**self.ctrl.update_context())
-        return context
-
-
-class CtrlItemDisplayMixin(ItemDisplayMixin, CtrlViewMixin):
-    def getattr(self, name, raise_ex=True):
-        if hasattr(self.ctrl, name):
-            return getattr(self.ctrl, name)
-        return super(CtrlItemDisplayMixin, self).getattr(name, raise_ex)
+        if self.attr_name.startswith('func|'):
+            self.attr_name = self.attr_name.split('|')[1]
+            self.is_func = True

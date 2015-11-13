@@ -1,0 +1,55 @@
+{% extends base_template %}
+
+{% macro show_help_text(help_text) %}
+  {% if help_text %}
+    <span class="glyphicon glyphicon-info-sign" data-toggle="tooltip" data-placement="top"
+          data-container="body" title="{{ help_text }}"></span>
+  {% endif %}
+{% endmacro %}
+
+{% macro showobject(object) %}
+  <div class="descr row detail-short">
+    {% for name, help_text, value in gen_object_short(object, True) %}
+      <div class="col-md-6 detail-item">
+        <label>{{ name }}{{ show_help_text(help_text) }}:</label>
+        <div class="one-line detail-info">
+          {% if value %}
+            {{ value }}
+          {% else %}
+            {{ (alt or _('None'))|safe }}
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <div class="col-md-6 detail-item">
+        <label>{{ model_name }}:</label>
+        <div class="one-line detail-info">
+          {{ object }}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="detail-long">
+    {% for name, help_text, value in gen_object_long(object, True) %}
+      <div class="detail-long-item">
+          <div class="heading">{{ name }}{{ show_help_text(help_text) }}</div>
+          {{ value|paragraphs }}
+      </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% block container %}
+  <div class="row">
+    <div class="col-sm-12">
+      {% if label_object %}
+        {{ display.display_labels(label_object) }}
+      {% endif %}
+      {{ showobject(object) }}
+      {% if extra_content %}
+        {% include extra_content %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

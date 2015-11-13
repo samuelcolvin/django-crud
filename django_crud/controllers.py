@@ -7,8 +7,7 @@ from django.views.generic import DetailView, ListView, CreateView
 from django.conf.urls import url, include
 from django.utils.translation import ugettext_lazy as _
 
-from .exceptions import SetupCrudError
-from .plumbing import CtrlViewMixin, CtrlItemDisplayMixin
+from .base_views import CtrlViewMixin, CtrlItemDisplayMixin, CtrlListView
 
 
 class VanillaController:
@@ -46,10 +45,10 @@ class VanillaController:
             template_name = self.list_template_name
 
             def __init__(self, ctrl):
-                super(TmpListView, self).__init__()
                 # allow extra properties to be set without overriding this entire method
                 self.ctrl = ctrl
                 ctrl.list_view_init_handler(self)
+                super(TmpListView, self).__init__()
 
             def get_queryset(self):
                 return self.ctrl.get_queryset()
@@ -69,9 +68,9 @@ class VanillaController:
             template_name = self.detail_template_name
 
             def __init__(self, ctrl):
-                super(TmpDetailView, self).__init__()
                 self.ctrl = ctrl
                 ctrl.detail_view_init_handler(self)
+                super(TmpDetailView, self).__init__()
 
             def get_queryset(self):
                 return self.ctrl.get_queryset()
@@ -112,9 +111,9 @@ class VanillaController:
             modal_template_name = self.modal_edit_template_name  # TODO
 
             def __init__(self, ctrl):
-                super(TmpCreateView, self).__init__()
                 self.ctrl = ctrl
                 ctrl.create_view_init_handler(self)
+                super(TmpCreateView, self).__init__()
 
             def form_valid(self, form):
                 return self.ctrl.form_valid(self, form)
@@ -151,24 +150,28 @@ class VanillaController:
 # noinspection PyMethodMayBeStatic
 class RichController(VanillaController):
     list_template_name = 'crud/table_list.jinja'
+    detail_template_name = 'crud/details.jinja'
     create_template_name = update_template_name = 'crud/edit.jinja'
     list_view_buttons = [
         'add_item_button'
     ]
+    list_display_items = []
+
     detail_view_buttons = [
-        'add_item_button',
-        'edit_item_button',
+        # 'add_item_button',
+        # 'edit_item_button',
     ]
 
     def list_view_init_handler(self, view_cls):
         view_cls.buttons = self.list_view_buttons
+        view_cls.display_items = self.list_display_items
 
     @property
     def list_view_parents(self):
-        return CtrlItemDisplayMixin, ListView
+        return CtrlListView, ListView
 
     def detail_view_init_handler(self, view_cls):
-        view_cls.buttons = self.list_view_buttons
+        view_cls.buttons = self.detail_view_buttons
 
     @property
     def detail_view_parents(self):
