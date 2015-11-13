@@ -1,0 +1,76 @@
+{% macro pagination(page_obj, get_without_page=False) %}
+  {% if page_obj.has_other_pages() %}
+    <div align="center">
+    <ul class="pagination">
+      {% if page_obj.number != 1 %}
+            <li><a href="?page=1{% if get_without_page %}&{{ get_without_page.urlencode() }}{% endif %}">&laquo;</a></li>
+      {% else %}
+        <li class="disabled"><a>&laquo;</a></li>
+      {% endif %}
+      {% for num in range(page_obj.number - 5, page_obj.number + 6) %}
+        {% if num in page_obj.paginator.page_range %}
+          {% if num == page_obj.number %}
+            <li class="active"><a>{{ num }} <span class="sr-only">(current)</span></a></li>
+          {% else %}
+                <li><a href="?page={{ num }}{% if get_without_page %}&{{ get_without_page.urlencode() }}{% endif %}">{{ num }}</a></li>
+          {% endif %}
+        {% endif %}
+      {% endfor %}
+      {% if page_obj.number != page_obj.paginator.num_pages %}
+            <li><a href="?page={{ page_obj.paginator.num_pages }}{% if get_without_page %}&{{ get_without_page.urlencode() }}{% endif %}">&raquo;</a></li>
+      {% else %}
+        <li class="disabled"><a>&raquo;</a></li>
+      {% endif %}
+    </ul>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro show_link(item, default_classes="") %}
+{% if item.rurl or item.url %}
+<a href="{{ item.url if item.url else obj_url(item.rurl) }}" class="{{ default_classes }} {{ item.classes or '' }}"
+  {%- if item.method %} data-method="{{ item.method }}" {% endif -%}
+  {%- if item.modal %}data-toggle="modal" data-target="#{{ item.target_modal }}"{% endif -%}
+  {%- if item.data %}{{ display.data_attrs(item.data) }}{% endif -%}
+  {%- if item.msg %} data-msg="{{ item.msg }}" {% endif -%}>{{ item.text }}</a>
+{% endif %}
+{% endmacro %}
+
+{% macro buttons(button_menu) %}
+  {% if button_menu is iterable and button_menu|length > 0 %}
+    {% if button_menu[0] is not mapping %}
+      {% for button in button_menu %}
+        {{ buttons(button) }}
+      {% endfor %}
+    {% else %}
+      <div class="btn-group">
+        {% for button in button_menu %}
+          {% if button is not mapping %}
+            menu
+          {% elif button.dropdown %}
+            {% if button_menu|length > 1 %}
+              <div class="btn-group dropdown">{% endif %}
+          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+            {{ button.text }}
+            <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu" role="menu">
+            {% for item in button.dropdown %}
+                <li>
+                  {{ show_link(item) }}
+                </li>
+            {% endfor %}
+          </ul>
+          {% if button_menu|length > 1 %}</div>{% endif %}
+          {% else %}
+            {% if button.css_class %}
+              {{ show_link(button, "btn btn-default " + button.css_class) }}
+            {% else %}
+              {{ show_link(button, "btn btn-default") }}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endif %}
+{% endmacro %}

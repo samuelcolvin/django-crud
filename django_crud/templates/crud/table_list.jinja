@@ -1,0 +1,42 @@
+{% extends 'crud/base.jinja' %}
+
+{% block container %}
+  {% if prefix_include %}
+    {% include prefix_include %}
+  {% endif %}
+  <div class="row">
+    <div class="col-md-{% if search_form %}9{% else %}12{% endif %}">
+      {% if object_list %}
+        <table class="table">
+          <thead>
+          <tr>
+            {% for column, name, value, css_classes in gen_object_short_with_column(object_list[0]) %}
+              <th class="{{ css_classes }}">{{ name }}</th>
+            {% else %}
+              <th>{{ view.model._meta.verbose_name }}</th>
+            {% endfor %}
+          </tr>
+          </thead>
+          <tbody>
+          {% for object in object_list %}
+            <tr>
+              {% for  column, name, value, css_classes in gen_object_short_with_column(object) %}
+                {% if loop.index == 1 and detail_view %}
+                  <td class="{{ css_classes }}"><a href="{{ url(detail_view, pk=object.pk) }}">{{ value }}</a></td>
+                {% else %}
+                  <td class="{{ css_classes }}">{{ value }}</td>
+                {% endif %}
+              {% else %}
+                <td><a href="#">{{ object }}</a></td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {{ display.pagination(page_obj, get_without_page) }}
+      {% else %}
+        <h3>{% trans %}No {{ plural_name }} found{% endtrans %}</h3>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends 'crud/base.jinja' %}
+
+{% block container %}
+  {% if form_prefix_template or view.form_prefix_template %}
+    {% include form_prefix_template or view.form_prefix_template %}
+  {% endif %}
+  <div class="row">
+    {% if full_width_form %}
+      <div class="col-xs-12">
+    {% else %}
+      <div class="col-md-6 col-md-push-3">
+    {% endif %}
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.media|safe }}
+        {{ form|bootstrap }}
+        <input type="submit" value="{{ _('Submit') }}" class="btn btn-default"/>
+      </form>
+    </div>
+  </div>
+  {% if form_suffix_template or view.form_suffix_template %}
+    {% include form_suffix_template or view.form_suffix_template %}
+  {% endif %}
+{% endblock %}
