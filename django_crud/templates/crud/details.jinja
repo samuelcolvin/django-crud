@@ -9,15 +9,11 @@
 
 {% macro showobject(object) %}
   <div class="descr row detail-short">
-    {% for name, help_text, value in gen_object_short(object, True) %}
+    {% for p in view.gen_short_props(object) %}
       <div class="col-md-6 detail-item">
-        <label>{{ name }}{{ show_help_text(help_text) }}:</label>
+        <label>{{ p.name }}{{ show_help_text(p.help_text) }}:</label>
         <div class="one-line detail-info">
-          {% if value %}
-            {{ value }}
-          {% else %}
-            {{ (alt or _('None'))|safe }}
-          {% endif %}
+          {{ p.value }}
         </div>
       </div>
     {% else %}
@@ -31,10 +27,10 @@
   </div>
 
   <div class="detail-long">
-    {% for name, help_text, value in gen_object_long(object, True) %}
+    {% for p in view.gen_short_props(object) %}
       <div class="detail-long-item">
-          <div class="heading">{{ name }}{{ show_help_text(help_text) }}</div>
-          {{ value|paragraphs }}
+          <div class="heading">{{ p.name }}{{ show_help_text(p.help_text) }}</div>
+          {{ p.value|paragraphs }}
       </div>
     {% endfor %}
   </div>

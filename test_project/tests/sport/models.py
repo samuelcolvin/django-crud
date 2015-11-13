@@ -2,8 +2,8 @@ from django.db import models
 
 
 class Town(models.Model):
-    name = models.CharField(max_length=255)
-    population = models.PositiveIntegerField()
+    name = models.CharField('Name', max_length=255)
+    population = models.PositiveIntegerField('Population')
 
     def __str__(self):
         return self.name
@@ -14,10 +14,14 @@ class Town(models.Model):
 
 
 class Team(models.Model):
-    name = models.CharField(max_length=255)
-    owner = models.CharField(max_length=255)
-    home_town = models.ForeignKey(Town)
-    details = models.TextField(null=True, blank=True)
+    name = models.CharField('Name', max_length=255)
+    owner = models.CharField('Owner', max_length=255)
+    home_town = models.ForeignKey(Town, verbose_name='Home Town')
+    details = models.TextField('Details', null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Team'
+        verbose_name_plural = 'Teams'
 
 
 class Player(models.Model):

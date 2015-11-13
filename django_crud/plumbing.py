@@ -22,6 +22,7 @@ def maybe_call(value_or_func, *args, **kwargs):
 
 class ButtonMixin:
     buttons = []
+    title = None
 
     def back_url(self):
         return self.request.META.get('HTTP_REFERER')
@@ -85,6 +86,13 @@ class ButtonMixin:
             raise SetupCrudError('neither "url" nor "dropdown" found in button: {!r}'.format(button))
         return button
 
+    @cached_property
+    def label_ctx(self):
+        return dict(
+            verbose_name=self.model._meta.verbose_name,
+            verbose_name_plural=self.model._meta.verbose_name_plural,
+        )
+
     def get_sub_attr(self, attr_name, obj=None, prop_name='short_description'):
         """
         get a property of an object's attribute by name.
@@ -101,7 +109,7 @@ class ButtonMixin:
         if attr:
             v = getattr(attr, prop_name, None)
             if v is not None:
-                return v.format(verbose_name=self.model._meta.verbose_name)
+                return v.format(**self.label_ctx)
 
     def _process_local_function(self, field_info, obj):
         return getattr(self, field_info.attr_name)(obj)
@@ -110,8 +118,14 @@ class ButtonMixin:
         return self.buttons
 
     def get_context_data(self, **kwargs):
-        kwargs['buttons'] = self.process_buttons(self.get_buttons()),
+        kwargs.update(
+            buttons=self.process_buttons(self.get_buttons()),
+            title=self.get_title()
+        )
         return super(ButtonMixin, self).get_context_data(**kwargs)
+
+    def get_title(self):
+        return self.title.format(**self.label_ctx) if self.title else self.model._meta.verbose_name_plural
 
 
 RENDER_MAILTO = getattr(settings, 'RENDER_MAILTO', True)
@@ -219,28 +233,22 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
     #: number of items to show on each each page
     paginate_by = 20
 
-    column_css = {}
+    extra_field_info = {}
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._model_meta = self.model._meta
         self._field_names = [f.name for f in self._model_meta.fields]
         self._extra_attrs = []
+        super(ItemDisplayMixin, self).__init__(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super(ItemDisplayMixin, self).get_context_data(**kwargs)
         plural_name = self._model_meta.verbose_name_plural
         context.update(
-            gen_object_short=self.gen_object_short,
-            gen_object_short_with_column=self.gen_object_short_with_column,
-            gen_object_long=self.gen_object_long,
             model_name=self._model_meta.verbose_name,
             plural_model_name=plural_name,
-            title=self.get_title() or plural_name,
         )
         return context
-
-    def get_title(self):
-        return self.title
 
     def get_queryset(self):
         """
@@ -263,40 +271,27 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         else:
             raise AttrCrudError('Model instance "{!r}" has no "get_absolute_url" method'.format(obj))
 
-    def gen_object_short(self, obj, inc_help_text=False):
+    def gen_short_props(self, obj):
         """
-        Generator of (name, value) pairs which are short for a given object.
+        Generate short property data for a given object.
 
         :param obj: the object to to find generate attributes for
-        :param inc_help_text: whether or not to yield help text as middle value of the tuple
-        :return: list of (name, value) or (name, help_text, value) pairs which are short.
+        :yield: dict of data about each attribute
         """
         for field_info in self._item_info:
             if not field_info.is_long:
-                yield self._display_value(obj, field_info, inc_help_text)
+                yield self._display_value(obj, field_info)
 
-    def gen_object_short_with_column(self, obj):
+    def gen_long_props(self, obj):
         """
-        Generator of (column, name, value, css_classes) tuples which are short for a given object.
-        """
-        for col, (name, value) in zip(self.get_display_items(), self.gen_object_short(obj)):
-            col_name = col
-            if isinstance(col, tuple):
-                col_name = col[1]
-            css_classes = self.column_css.get(col_name, '')
-            yield col, name, value, css_classes
-
-    def gen_object_long(self, obj, inc_help_text=False):
-        """
-        Generator of (name, value) pairs which are long for a given object.
+        Generate long property data for a given object.
 
         :param obj: the object to to find generate attributes for
-        :param inc_help_text: whether or not to yield help text as middle value of the tuple
-        :return: list of (name, value) pairs which are long.
+        :yield: dict of data about each attribute
         """
         for field_info in self._item_info:
             if field_info.is_long:
-                yield self._display_value(obj, field_info, inc_help_text)
+                yield self._display_value(obj, field_info)
 
     @cached_property
     def _item_info(self):
@@ -306,7 +301,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         After the first call the list is cached to improve performance.
         :return: list of tuples for each item in display_items
         """
-        return map(self._getattr_info, self.get_display_items())
+        return list(map(self._getattr_info, self.get_display_items()))
 
     def get_display_items(self):
         """
@@ -369,7 +364,7 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         """
         return attr_name.replace('__', '.').split('.')
 
-    def _display_value(self, obj, field_info, inc_help_text=False):
+    def _display_value(self, obj, field_info):
         """
         Generates a value for an attribute, optionally generate it's url and make it a link and returns it
         together with with it's verbose name.
@@ -379,7 +374,6 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
 
         :param obj: any instance of the model to get the value from.
         :param field_info: is FieldInfo below
-        :param inc_help_text: whether or not to return help text as middle value of the tuple
         :return: tuple containing (verbose_name, help_text, value)
         """
         if field_info.is_func:
@@ -410,10 +404,12 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
         if url:
             value = mark_safe('<a href="%s">%s</a>' % (url, escape(value)))
 
-        if inc_help_text:
-            return field_info.verbose_name, field_info.help_text, value
-        else:
-            return field_info.verbose_name, value
+        return {
+            'name': field_info.verbose_name,
+            'value': value,
+            'help_text': field_info.help_text,
+            'extra': self.extra_field_info.get(field_info.attr_name, {})
+        }
 
     def _get_object_value(self, obj, attr_name):
         """
@@ -459,18 +455,18 @@ class FieldInfo(object):
             else:
                 raise SetupCrudError('display_item tuples must be 2 or 3 in length, not %d' % len(self.attr_name))
 
-        if self.attr_name.startswith('$'):
-            self.attr_name = self.attr_name[1:]
+        if self.attr_name.startswith('long|'):
+            self.attr_name = self.attr_name[5:]
             self.is_long = True
 
-        if self.attr_name.startswith('@'):
-            self.attr_name = self.attr_name[1:]
+        if self.attr_name.startswith('link|'):
+            self.attr_name = self.attr_name[5:]
             self.detail_view_link = True
 
-        elif self.attr_name.startswith('rev|'):
+        if self.attr_name.startswith('func|'):
+            self.attr_name = self.attr_name[5:]
+            self.is_func = True
+
+        if self.attr_name.startswith('rev|'):
             parts = self.attr_name.split('|', 2)
             _, self.rev_view_name, self.attr_name = parts
-
-        if self.attr_name.startswith('func|'):
-            self.attr_name = self.attr_name.split('|')[1]
-            self.is_func = True

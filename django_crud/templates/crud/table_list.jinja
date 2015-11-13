@@ -10,19 +10,19 @@
         <table class="table">
           <thead>
           <tr>
-            {% for column, name, value, css_classes in view.gen_object_short_with_column(object_list[0]) %}
-              <th class="{{ css_classes }}">{{ name }}</th>
+            {% for p in view.gen_short_props(object_list[0]) %}
+              <th class="{{ p.extra.get('css', '') }}">{{ p.name }}</th>
             {% else %}
-              <th>{{ view.model._meta.verbose_name }}</th>
+              <th>{{ model_name }}</th>
             {% endfor %}
           </tr>
           </thead>
           <tbody>
           {% for object in object_list %}
             <tr>
-              {% for  column, name, value, css_classes in view.gen_object_short_with_column(object) %}
-                <td class="{{ css_classes }}">
-                  {{ value }}
+              {% for p in view.gen_short_props(object) %}
+                <td class="{{ p.extra.get('css', '') }}">
+                  {{ p.value }}
                 </td>
               {% else %}
                 <td>

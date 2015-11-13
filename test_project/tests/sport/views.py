@@ -10,6 +10,7 @@ class TownController(RichController):
 class TeamController(RichController):
     model = Team
     list_display_items = [
-        'name',
+        'link|name',
         'owner',
+        'home_town',
     ]

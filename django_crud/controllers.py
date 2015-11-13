@@ -3,11 +3,11 @@ from django.forms import modelform_factory
 from django.shortcuts import redirect
 from django.utils.decorators import classonlymethod
 from django.utils.encoding import force_text
-from django.views.generic import DetailView, ListView, CreateView
 from django.conf.urls import url, include
 from django.utils.translation import ugettext_lazy as _
 
-from .base_views import CtrlViewMixin, CtrlItemDisplayMixin, CtrlListView
+from .plumbing import ButtonMixin, ItemDisplayMixin
+from .base_views import GetAttrMixin, CtrlListView, CtrlDetailView, CtrlCreateView, CtrlUpdateView, RichCtrlListView
 
 
 class VanillaController:
@@ -34,30 +34,21 @@ class VanillaController:
 
     @property
     def list_view_parents(self):
-        return CtrlViewMixin, ListView
+        return CtrlListView,
 
     def list_view_init_handler(self, view_cls):
         pass
 
     def list_view(self):
+        print(repr(self.list_view_parents))
         class TmpListView(*self.list_view_parents):
             model = self.model
             template_name = self.list_template_name
-
-            def __init__(self, ctrl):
-                # allow extra properties to be set without overriding this entire method
-                self.ctrl = ctrl
-                ctrl.list_view_init_handler(self)
-                super(TmpListView, self).__init__()
-
-            def get_queryset(self):
-                return self.ctrl.get_queryset()
-
         return TmpListView.as_view(self)
 
     @property
     def detail_view_parents(self):
-        return CtrlViewMixin, DetailView
+        return CtrlDetailView,
 
     def detail_view_init_handler(self, view_cls):
         pass
@@ -66,15 +57,6 @@ class VanillaController:
         class TmpDetailView(*self.detail_view_parents):
             model = self.model
             template_name = self.detail_template_name
-
-            def __init__(self, ctrl):
-                self.ctrl = ctrl
-                ctrl.detail_view_init_handler(self)
-                super(TmpDetailView, self).__init__()
-
-            def get_queryset(self):
-                return self.ctrl.get_queryset()
-
         return TmpDetailView.as_view(self)
 
     def form_factory(self):
@@ -98,7 +80,7 @@ class VanillaController:
 
     @property
     def create_view_parents(self):
-        return CtrlViewMixin, CreateView
+        return CtrlCreateView,
 
     def create_view_init_handler(self, view_cls):
         pass
@@ -109,16 +91,22 @@ class VanillaController:
             model = self.model
             template_name = self.create_template_name
             modal_template_name = self.modal_edit_template_name  # TODO
-
-            def __init__(self, ctrl):
-                self.ctrl = ctrl
-                ctrl.create_view_init_handler(self)
-                super(TmpCreateView, self).__init__()
-
-            def form_valid(self, form):
-                return self.ctrl.form_valid(self, form)
-
         return TmpCreateView.as_view(self)
+
+    @property
+    def update_view_parents(self):
+        return CtrlUpdateView,
+
+    def update_view_init_handler(self, view_cls):
+        pass
+
+    def update_view(self):
+        class TmpUpdateView(*self.update_view_parents):
+            form_class = self.form_factory()
+            model = self.model
+            template_name = self.update_template_name
+            modal_template_name = self.modal_edit_template_name  # TODO
+        return TmpUpdateView.as_view(self)
 
     @classonlymethod
     def as_views(cls, name_prefix):
@@ -153,12 +141,12 @@ class RichController(VanillaController):
     detail_template_name = 'crud/details.jinja'
     create_template_name = update_template_name = 'crud/edit.jinja'
     list_view_buttons = [
-        'add_item_button'
+        'create_item_button'
     ]
     list_display_items = []
 
     detail_view_buttons = [
-        # 'add_item_button',
+        'create_item_button',
         # 'edit_item_button',
     ]
 
@@ -168,15 +156,19 @@ class RichController(VanillaController):
 
     @property
     def list_view_parents(self):
-        return CtrlListView, ListView
+        return RichCtrlListView, GetAttrMixin, ItemDisplayMixin, CtrlListView
 
     def detail_view_init_handler(self, view_cls):
         view_cls.buttons = self.detail_view_buttons
 
     @property
     def detail_view_parents(self):
-        return CtrlItemDisplayMixin, DetailView
+        return GetAttrMixin, ItemDisplayMixin, CtrlDetailView
 
-    def add_item_button(self):
+    @property
+    def create_view_parents(self):
+        return ButtonMixin, CtrlCreateView
+
+    def create_item_button(self):
         return self.relative_url('create')
-    add_item_button.short_description = _('Add {verbose_name}')
+    create_item_button.short_description = _('Create {verbose_name}')

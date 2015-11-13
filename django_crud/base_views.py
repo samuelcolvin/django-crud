@@ -1,12 +1,18 @@
 from functools import update_wrapper
 
+from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.utils.decorators import classonlymethod
-
-from .plumbing import ItemDisplayMixin
+from django.utils.translation import ugettext_lazy as _
 
 
 class CtrlViewMixin:
-    ctrl = None
+    def __init__(self, ctrl):
+        self.ctrl = ctrl
+        self.init_handler()
+        super(CtrlViewMixin, self).__init__()
+
+    def init_handler(self):
+        pass
 
     @classonlymethod
     def as_view(cls, ctrl, **initkwargs):
@@ -48,13 +54,55 @@ class CtrlViewMixin:
         return context
 
 
-class CtrlItemDisplayMixin(ItemDisplayMixin, CtrlViewMixin):
+class GetAttrMixin:
     def getattr(self, name, raise_ex=True):
         if hasattr(self.ctrl, name):
             return getattr(self.ctrl, name)
-        return super(CtrlItemDisplayMixin, self).getattr(name, raise_ex)
+        return super(GetAttrMixin, self).getattr(name, raise_ex)
 
 
-class CtrlListView(CtrlItemDisplayMixin):
+class CtrlListView(CtrlViewMixin, ListView):
+    def init_handler(self):
+        self.ctrl.list_view_init_handler(self)
+
+    def get_queryset(self):
+        return self.ctrl.get_queryset()
+
+    def get_detail_url(self, obj):
+        return self.ctrl.relative_url('details/{}'.format(obj.pk))
+
+
+class CtrlDetailView(CtrlViewMixin, DetailView):
+    def init_handler(self):
+        self.ctrl.detail_view_init_handler(self)
+
+    def get_queryset(self):
+        return self.ctrl.get_queryset()
+
+
+class CtrlCreateView(CtrlViewMixin, CreateView):
+    title = _('Create {verbose_name}')
+
+    def init_handler(self):
+        self.ctrl.create_view_init_handler(self)
+
+    def form_valid(self, form):
+        return self.ctrl.form_valid(self, form)
+
+
+class CtrlUpdateView(CtrlViewMixin, UpdateView):
+    title = _('Update {verbose_name}')
+
+    def init_handler(self):
+        self.ctrl.update_view_init_handler(self)
+
+    def form_valid(self, form):
+        return self.ctrl.form_valid(self, form)
+
+    def get_queryset(self):
+        return self.ctrl.get_queryset()
+
+
+class RichCtrlListView:
     def get_detail_url(self, obj):
         return self.ctrl.relative_url('details/{}'.format(obj.pk))
