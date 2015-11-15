@@ -10,6 +10,7 @@ from django.utils.safestring import mark_safe
 from django.utils.html import escape
 from django.utils.functional import cached_property
 from django.utils.formats import date_format, time_format, number_format
+from django.utils.translation import ugettext_lazy as _
 
 from .exceptions import AttrCrudError, SetupCrudError, ReverseCrudError
 
@@ -20,7 +21,7 @@ def maybe_call(value_or_func, *args, **kwargs):
     return value_or_func(*args, **kwargs) if callable(value_or_func) else value_or_func
 
 
-class ButtonMixin:
+class RichViewMixin:
     buttons = []
     title = None
 
@@ -122,7 +123,7 @@ class ButtonMixin:
             buttons=self.process_buttons(self.get_buttons()),
             title=self.get_title()
         )
-        return super(ButtonMixin, self).get_context_data(**kwargs)
+        return super(RichViewMixin, self).get_context_data(**kwargs)
 
     def get_title(self):
         return self.title.format(**self.label_ctx) if self.title else self.model._meta.verbose_name_plural
@@ -200,7 +201,7 @@ class FormatMixin:
         return value
 
 
-class ItemDisplayMixin(FormatMixin, ButtonMixin):
+class ItemDisplayMixin(FormatMixin, RichViewMixin):
     """
     ItemDisplayMixin works with ListView and DetailView to simplify the process of listing and displaying a model.
 
@@ -209,8 +210,6 @@ class ItemDisplayMixin(FormatMixin, ButtonMixin):
 
     #: an instance of django.db.models.Model to be displayed, this is already required for ListView or DetailView
     model = None
-
-    title = None
 
     #: list of references to attributes of instances of the model, items maybe
     #: * field names
@@ -470,3 +469,23 @@ class FieldInfo(object):
         if self.attr_name.startswith('rev|'):
             parts = self.attr_name.split('|', 2)
             _, self.rev_view_name, self.attr_name = parts
+
+
+class GetAttrMixin:
+    def getattr(self, name, raise_ex=True):
+        if hasattr(self.ctrl, name):
+            return getattr(self.ctrl, name)
+        return super(GetAttrMixin, self).getattr(name, raise_ex)
+
+
+class RichCtrlListView(GetAttrMixin, ItemDisplayMixin):
+    def get_detail_url(self, obj):
+        return self.ctrl.relative_url('details/{}'.format(obj.pk))
+
+
+class RichCtrlCreateView(RichViewMixin):
+    title = _('Create {verbose_name}')
+
+
+class RichCtrlUpdateView(RichViewMixin):
+    title = _('Update {verbose_name}')
