@@ -1,9 +1,10 @@
+from django_crud.forms import RichCrudForm
 import re
 
 from django.contrib import messages
 from django.conf.urls import url, include
 from django.db.models import ProtectedError
-from django.forms import modelform_factory
+from django.forms import modelform_factory, ModelForm
 from django.shortcuts import redirect
 from django.utils.decorators import classonlymethod
 from django.utils.translation import ugettext_lazy as _
@@ -62,8 +63,12 @@ class VanillaController:
             template_name = self.detail_template_name
         return TmpDetailView.as_view(self)
 
+    @property
+    def form_parents(self):
+        return ModelForm
+
     def form_factory(self):
-        return modelform_factory(self.model, **self.form_factory_kwargs)
+        return modelform_factory(self.model, form=self.form_parents, **self.form_factory_kwargs)
 
     def get_create_success_url(self):
         return self.relative_url('list')
@@ -196,6 +201,10 @@ class RichController(VanillaController):
     def detail_view_init_handler(self, view_cls):
         view_cls.buttons = self.detail_view_buttons
         view_cls.display_items = self.detail_display_items
+
+    @property
+    def form_parents(self):
+        return RichCrudForm
 
     @property
     def create_view_parents(self):

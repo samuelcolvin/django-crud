@@ -16,7 +16,7 @@ class Town(models.Model):
 class Team(models.Model):
     name = models.CharField('Name', max_length=255)
     owner = models.CharField('Owner', max_length=255)
-    home_town = models.ForeignKey(Town, verbose_name='Home Town')
+    home_town = models.ForeignKey(Town, verbose_name='Home Town', help_text='The town they call home.')
     details = models.TextField('Details', null=True, blank=True)
 
     class Meta:

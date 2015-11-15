@@ -10,3 +10,4 @@ env/
 
 *.sqlite3
 test_project/tests/static/libs/
+test_project/staticfiles/

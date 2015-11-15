@@ -1,5 +1,5 @@
 Django==1.8.6
 django-jinja==1.4.1
-django-jinja-bootstrap-form==4.0.3
+-e git+git@github.com:samuelcolvin/django-jinja-bootstrap-form.git@master#egg=django-jinja-bootstrap-form-4.1.0
 grablib==0.1.9
 django-extensions==1.5.9

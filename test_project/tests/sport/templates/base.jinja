@@ -8,7 +8,7 @@
 
     <title>{{ title }}</title>
     <link href="{{ 'libs/css/bootstrap.min.css'|static }}" rel="stylesheet">
-    <link href="{{ 'css/crud.css'|static }}" rel="stylesheet">
+{#    <link href="{{ 'css/crud.css'|static }}" rel="stylesheet">#}
   </head>
 
   <body>
@@ -37,12 +37,12 @@
     </nav>
 
     <div class="container">
-      {% import 'crud/macros.jinja' as display %}
-      {{ display.buttons(buttons) }}
       {% block container %}{% endblock %}
     </div>
 
+  {% block js %}
   <script src="{{ 'libs/js/jquery.min.js'|static }}"></script>
   <script src="{{ 'libs/js/bootstrap.min.js'|static }}"></script>
+  {% endblock %}
   </body>
 </html>

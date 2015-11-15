@@ -1,0 +1,23 @@
+textarea.form-control{
+  height : 75px;
+}
+
+label {
+  font-weight: 400;
+}
+
+label.required {
+  font-weight: 700;
+}
+
+label.required::after {
+  content:"*";
+  color: #a00;
+  font-size: 150%;
+  margin-left: 2px;
+  line-height: 18px;
+}
+
+.has-error label.required::after {
+  color: #000;
+}

@@ -1,4 +1,5 @@
 {% extends base_template %}
+{% import 'crud/macros.jinja' as macros with context %}
 
 {% macro show_help_text(help_text) %}
   {% if help_text %}
@@ -37,10 +38,12 @@
 {% endmacro %}
 
 {% block container %}
+  {{ macros.css() }}
+  {{ macros.buttons(buttons) }}
   <div class="row">
     <div class="col-sm-12">
       {% if label_object %}
-        {{ display.display_labels(label_object) }}
+        {{ macros.display_labels(label_object) }}
       {% endif %}
       {{ showobject(object) }}
       {% if extra_content %}
@@ -48,4 +51,9 @@
       {% endif %}
     </div>
   </div>
+{% endblock %}
+
+{% block js %}
+  {{ super() }}
+  {{ macros.js() }}
 {% endblock %}

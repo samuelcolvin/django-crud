@@ -36,11 +36,11 @@
 {% endif %}
 {% endmacro %}
 
-{% macro buttons(button_menu) %}
+{% macro _buttons(button_menu) %}
   {% if button_menu is iterable and button_menu|length > 0 %}
     {% if button_menu[0] is not mapping %}
       {% for button in button_menu %}
-        {{ buttons(button) }}
+        {{ _buttons(button) }}
       {% endfor %}
     {% else %}
       <div class="btn-group">
@@ -72,5 +72,23 @@
         {% endfor %}
       </div>
     {% endif %}
+  {% endif %}
+{% endmacro %}
+
+{% macro buttons(button_menu) %}
+  <div class="buttons">
+    {{ _buttons(button_menu) }}
+  </div>
+{% endmacro %}
+
+{% macro css() %}
+  {% if include_crud_assets %}
+    <link href="{{ 'crud/display.css'|static }}" rel="stylesheet">
+  {% endif %}
+{% endmacro %}
+
+{% macro js() %}
+  {% if include_crud_assets %}
+    <script src="{{ 'crud/display.js'|static }}"></script>
   {% endif %}
 {% endmacro %}

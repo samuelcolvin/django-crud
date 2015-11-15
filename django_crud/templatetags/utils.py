@@ -24,4 +24,4 @@ def paragraphs(text):
     if isinstance(text, SafeData):
         return text
     text = escape(text)
-    return mark_safe(u'<p class="no-margin">%s</p>' % text.replace(u'\n', u'</p>\n<p class="no-margin">'))
+    return mark_safe('<p class="no-margin">{}</p>'.format(text.replace('\n', '</p>\n<p class="no-margin">')))
