@@ -1,6 +1,7 @@
 from functools import update_wrapper
 
-from django.views.generic import ListView, DetailView, CreateView, UpdateView
+from django.shortcuts import redirect
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.utils.decorators import classonlymethod
 
 
@@ -86,6 +87,20 @@ class CtrlUpdateView(CtrlViewMixin, UpdateView):
 
     def form_valid(self, form):
         return self.ctrl.update_form_valid(self, form)
+
+    def get_queryset(self):
+        return self.ctrl.get_queryset()
+
+
+class CtrlDeleteView(CtrlViewMixin, DeleteView):
+    def init_handler(self):
+        self.ctrl.delete_view_init_handler(self)
+
+    def delete(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        success_url = self.ctrl.get_delete_success_url()
+        self.ctrl.delete_object(self.object)
+        return redirect(success_url)
 
     def get_queryset(self):
         return self.ctrl.get_queryset()

@@ -1,0 +1,15 @@
+{% extends base_template %}
+
+{% block container %}
+  <form action="" method="post">{% csrf_token %}
+    <p>
+      {% trans %}
+        Are you sure you want to delete {{ model_name }}: "{{ object }}"?
+      {% endtrans %}
+    </p>
+    <a class="btn btn-default" href="{{ view.ctrl.relative_url('details/{pk}'.format(**view.kwargs)) }}">
+      {{ _('Cancel') }}
+    </a>
+    <input type="submit" class="btn btn-primary" value="{{ _('Confirm') }}"/>
+  </form>
+{% endblock %}

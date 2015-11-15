@@ -1,15 +1,16 @@
 import re
 
+from django.contrib import messages
 from django.conf.urls import url, include
+from django.db.models import ProtectedError
 from django.forms import modelform_factory
 from django.shortcuts import redirect
 from django.utils.decorators import classonlymethod
-from django.utils.encoding import force_text
 from django.utils.translation import ugettext_lazy as _
 
-from .rich_views import RichViewMixin, ItemDisplayMixin, GetAttrMixin, RichCtrlListView, RichCtrlCreateView, \
-    RichCtrlUpdateView
-from .base_views import CtrlListView, CtrlDetailView, CtrlCreateView, CtrlUpdateView
+from .rich_views import RichListViewMixin, RichDetailViewMixin, RichCreateViewMixin, RichUpdateViewMixin, \
+    RichDeleteViewMixin
+from .base_views import CtrlListView, CtrlDetailView, CtrlCreateView, CtrlUpdateView, CtrlDeleteView
 
 
 class VanillaController:
@@ -108,6 +109,29 @@ class VanillaController:
             modal_template_name = self.modal_edit_template_name  # TODO
         return TmpUpdateView.as_view(self)
 
+    @property
+    def delete_view_parents(self):
+        return CtrlDeleteView,
+
+    def get_delete_success_url(self):
+        return self.get_create_success_url()
+
+    def delete_object(self, object):
+        try:
+            object.delete()
+        except ProtectedError:
+            messages.error(self.request, _('Sorry, this object is in use so it cannot be deleted.'))
+
+    def delete_view_init_handler(self, view_cls):
+        pass
+
+    def delete_view(self):
+        class TmpDeleteView(*self.delete_view_parents):
+            model = self.model
+            template_name = self.delete_template_name
+            modal_template_name = self.modal_edit_template_name  # TODO
+        return TmpDeleteView.as_view(self)
+
     @classonlymethod
     def as_views(cls, name_prefix):
         ctrl = cls()
@@ -129,7 +153,10 @@ class VanillaController:
         if update_view:
             url_patterns.append(url(r'update/(?P<pk>\d+)/$', update_view, name='%s-update' % name_prefix))
 
-        #     url(r'delete/(?P<pk>\d+)/$', ctrl.delete_view(), name='%s-delete' % cls.name_prefix),
+        delete_view = ctrl.delete_view and ctrl.delete_view()
+        if delete_view:
+            url_patterns.append(url(r'delete/(?P<pk>\d+)/$', delete_view, name='%s-delete' % name_prefix))
+
         return include(url_patterns)
 
     def relative_url(self, rel_url):
@@ -142,14 +169,15 @@ class RichController(VanillaController):
     list_template_name = 'crud/table_list.jinja'
     detail_template_name = 'crud/details.jinja'
     create_template_name = update_template_name = 'crud/edit.jinja'
+    delete_template_name = 'crud/delete.jinja'
     list_view_buttons = [
         'create_item_button'
     ]
     list_display_items = []
 
     detail_view_buttons = [
-        'create_item_button',
         'update_item_button',
+        'delete_item_button',
     ]
 
     def list_view_init_handler(self, view_cls):
@@ -158,18 +186,18 @@ class RichController(VanillaController):
 
     @property
     def list_view_parents(self):
-        return RichCtrlListView, CtrlListView
+        return RichListViewMixin, CtrlListView
 
     def detail_view_init_handler(self, view_cls):
         view_cls.buttons = self.detail_view_buttons
 
     @property
     def detail_view_parents(self):
-        return GetAttrMixin, ItemDisplayMixin, CtrlDetailView
+        return RichDetailViewMixin, CtrlDetailView
 
     @property
     def create_view_parents(self):
-        return RichCtrlCreateView, CtrlCreateView
+        return RichCreateViewMixin, CtrlCreateView
 
     def create_item_button(self):
         return self.relative_url('create')
@@ -177,8 +205,16 @@ class RichController(VanillaController):
 
     @property
     def update_view_parents(self):
-        return RichCtrlUpdateView, CtrlUpdateView
+        return RichUpdateViewMixin, CtrlUpdateView
 
     def update_item_button(self):
         return self.relative_url('update/{pk}'.format(**self.kwargs))
     update_item_button.short_description = _('Update {verbose_name}')
+
+    @property
+    def delete_view_parents(self):
+        return RichDeleteViewMixin, CtrlDeleteView
+
+    def delete_item_button(self):
+        return self.relative_url('delete/{pk}'.format(**self.kwargs))
+    delete_item_button.short_description = _('Delete {verbose_name}')

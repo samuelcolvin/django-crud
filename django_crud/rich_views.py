@@ -121,7 +121,9 @@ class RichViewMixin:
     def get_context_data(self, **kwargs):
         kwargs.update(
             buttons=self.process_buttons(self.get_buttons()),
-            title=self.get_title()
+            title=self.get_title(),
+            model_name=self.model._meta.verbose_name,
+            plural_model_name=self.model._meta.verbose_name_plural,
         )
         return super(RichViewMixin, self).get_context_data(**kwargs)
 
@@ -235,19 +237,9 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
     extra_field_info = {}
 
     def __init__(self, *args, **kwargs):
-        self._model_meta = self.model._meta
-        self._field_names = [f.name for f in self._model_meta.fields]
+        self._field_names = [f.name for f in self.model._meta.fields]
         self._extra_attrs = []
         super(ItemDisplayMixin, self).__init__(*args, **kwargs)
-
-    def get_context_data(self, **kwargs):
-        context = super(ItemDisplayMixin, self).get_context_data(**kwargs)
-        plural_name = self._model_meta.verbose_name_plural
-        context.update(
-            model_name=self._model_meta.verbose_name,
-            plural_model_name=plural_name,
-        )
-        return context
 
     def get_queryset(self):
         """
@@ -324,7 +316,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                 field_info.help_text = self.get_sub_attr(field_info.attr_name, 'help_text')
             return field_info
 
-        model, meta, field_names = self.model, self._model_meta, self._field_names
+        model, meta, field_names = self.model, self.model._meta, self._field_names
         attr_name_part = None
         for attr_name_part in self._split_attr_name(field_info.attr_name):
             if attr_name_part in field_names:
@@ -478,14 +470,22 @@ class GetAttrMixin:
         return super(GetAttrMixin, self).getattr(name, raise_ex)
 
 
-class RichCtrlListView(GetAttrMixin, ItemDisplayMixin):
+class RichListViewMixin(GetAttrMixin, ItemDisplayMixin):
     def get_detail_url(self, obj):
         return self.ctrl.relative_url('details/{}'.format(obj.pk))
 
 
-class RichCtrlCreateView(RichViewMixin):
+class RichDetailViewMixin(GetAttrMixin, ItemDisplayMixin):
+    pass
+
+
+class RichCreateViewMixin(RichViewMixin):
     title = _('Create {verbose_name}')
 
 
-class RichCtrlUpdateView(RichViewMixin):
+class RichUpdateViewMixin(RichViewMixin):
     title = _('Update {verbose_name}')
+
+
+class RichDeleteViewMixin(RichViewMixin):
+    title = _('Delete {verbose_name}')
