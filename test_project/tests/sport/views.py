@@ -14,3 +14,10 @@ class TeamController(RichController):
         'owner',
         'home_town',
     ]
+
+    detail_display_items = [
+        'name',
+        'owner',
+        'home_town',
+        'details',
+    ]

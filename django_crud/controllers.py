@@ -174,6 +174,7 @@ class RichController(VanillaController):
         'create_item_button'
     ]
     list_display_items = []
+    detail_display_items = []
 
     detail_view_buttons = [
         'update_item_button',
@@ -188,12 +189,13 @@ class RichController(VanillaController):
     def list_view_parents(self):
         return RichListViewMixin, CtrlListView
 
-    def detail_view_init_handler(self, view_cls):
-        view_cls.buttons = self.detail_view_buttons
-
     @property
     def detail_view_parents(self):
         return RichDetailViewMixin, CtrlDetailView
+
+    def detail_view_init_handler(self, view_cls):
+        view_cls.buttons = self.detail_view_buttons
+        view_cls.display_items = self.detail_display_items
 
     @property
     def create_view_parents(self):

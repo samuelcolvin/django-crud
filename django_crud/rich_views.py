@@ -22,8 +22,15 @@ def maybe_call(value_or_func, *args, **kwargs):
 
 
 class RichViewMixin:
+    #: an instance of django.db.models.Model to be displayed, this is already required for ListView or DetailView
+    model = None
+
     buttons = []
     title = None
+
+    def __init__(self, *args, **kwargs):
+        self._meta = self.model._meta
+        super(RichViewMixin, self).__init__(*args, **kwargs)
 
     def back_url(self):
         return self.request.META.get('HTTP_REFERER')
@@ -90,8 +97,9 @@ class RichViewMixin:
     @cached_property
     def label_ctx(self):
         return dict(
-            verbose_name=self.model._meta.verbose_name,
-            verbose_name_plural=self.model._meta.verbose_name_plural,
+            verbose_name=self._meta.verbose_name,
+            verbose_name_plural=self._meta.verbose_name_plural,
+            object=getattr(self, 'object', None),
         )
 
     def get_sub_attr(self, attr_name, obj=None, prop_name='short_description'):
@@ -122,13 +130,13 @@ class RichViewMixin:
         kwargs.update(
             buttons=self.process_buttons(self.get_buttons()),
             title=self.get_title(),
-            model_name=self.model._meta.verbose_name,
-            plural_model_name=self.model._meta.verbose_name_plural,
+            model_name=self._meta.verbose_name,
+            plural_model_name=self._meta.verbose_name_plural,
         )
         return super(RichViewMixin, self).get_context_data(**kwargs)
 
     def get_title(self):
-        return self.title.format(**self.label_ctx) if self.title else self.model._meta.verbose_name_plural
+        return self.title.format(**self.label_ctx) if self.title else self._meta.verbose_name_plural
 
 
 RENDER_MAILTO = getattr(settings, 'RENDER_MAILTO', True)
@@ -210,9 +218,6 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
     This class should be "mixed in" before ListView or DetailView so it can override their attributes.
     """
 
-    #: an instance of django.db.models.Model to be displayed, this is already required for ListView or DetailView
-    model = None
-
     #: list of references to attributes of instances of the model, items maybe
     #: * field names
     #: * references to related fields either using Django's "thing__related_ob" syntax or "thing.related_ob" syntax
@@ -237,9 +242,9 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
     extra_field_info = {}
 
     def __init__(self, *args, **kwargs):
-        self._field_names = [f.name for f in self.model._meta.fields]
-        self._extra_attrs = []
         super(ItemDisplayMixin, self).__init__(*args, **kwargs)
+        self._field_names = [f.name for f in self._meta.fields]
+        self._extra_attrs = []
 
     def get_queryset(self):
         """
@@ -316,7 +321,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                 field_info.help_text = self.get_sub_attr(field_info.attr_name, 'help_text')
             return field_info
 
-        model, meta, field_names = self.model, self.model._meta, self._field_names
+        model, meta, field_names = self.model, self._meta, self._field_names
         attr_name_part = None
         for attr_name_part in self._split_attr_name(field_info.attr_name):
             if attr_name_part in field_names:
@@ -346,6 +351,10 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                     field_info.help_text = field_info.field.help_text
                 else:
                     field_info.help_text = self.get_sub_attr(attr_name_part, model, 'help_text')
+
+        # make TextFields "long"
+        if isinstance(field_info.field, models.TextField):
+            field_info.is_long = True
         return field_info
 
     @staticmethod
@@ -476,7 +485,7 @@ class RichListViewMixin(GetAttrMixin, ItemDisplayMixin):
 
 
 class RichDetailViewMixin(GetAttrMixin, ItemDisplayMixin):
-    pass
+    title = _('{object}')
 
 
 class RichCreateViewMixin(RichViewMixin):
