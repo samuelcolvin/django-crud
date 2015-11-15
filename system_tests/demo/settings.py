@@ -21,7 +21,7 @@ INSTALLED_APPS = (
 
     'django_extensions',
 
-    'tests.sport'
+    'demo.sport'
 )
 
 MIDDLEWARE_CLASSES = (
@@ -35,7 +35,7 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.security.SecurityMiddleware',
 )
 
-ROOT_URLCONF = 'tests.urls'
+ROOT_URLCONF = 'demo.urls'
 
 context_processors = (
     'django.template.context_processors.debug',
@@ -68,7 +68,7 @@ TEMPLATES = [
 
 BASE_TEMPLATE = 'base.jinja'
 
-WSGI_APPLICATION = 'tests.wsgi.application'
+WSGI_APPLICATION = 'demo.wsgi.application'
 
 DATABASES = {
     'default': {
@@ -88,5 +88,5 @@ USE_L10N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = (os.path.join(BASE_DIR, 'tests/static'),)
+STATICFILES_DIRS = (os.path.join(BASE_DIR, 'demo/static'),)
 STATIC_ROOT = 'staticfiles'

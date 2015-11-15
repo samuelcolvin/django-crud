@@ -1,6 +1,6 @@
 
 {
-  "download_root": "tests/static/libs",
+  "download_root": "demo/static/libs",
   "sites":
   {
     "github": "https://raw.githubusercontent.com",
