@@ -10,4 +10,7 @@ install:
 
 script:
   - ./lint.sh
-  - py.test tests
+  - py.test --cov=django_crud tests
+
+after_success:
+  - codecov

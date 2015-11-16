@@ -3,6 +3,7 @@ __pycache__/
 
 # C extensions
 *.so
+.coverage
 
 # Distribution / packaging
 env/
@@ -11,4 +12,4 @@ env/
 *.sqlite3
 example_site/demo/static/libs/
 example_site/staticfiles/
-tests/.cache/
+*.cache/

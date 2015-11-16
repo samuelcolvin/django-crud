@@ -5,6 +5,7 @@ django-jinja-bootstrap-form==4.1.0
 grablib==0.1.9
 
 pytest==2.8.2
+pytest-cov==2.2.0
 codecov==1.6.3
 coverage==4.0.2
 flake8==2.5.0
