@@ -313,9 +313,9 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
         field_info = FieldInfo(attr_name)
 
         if field_info.is_func:
-            if field_info.verbose_name is None:
-                field_info.verbose_name = self.get_sub_attr(field_info.attr_name) or field_info.attr_name
-                field_info.help_text = self.get_sub_attr(field_info.attr_name, 'help_text')
+            field_info.verbose_name = field_info.verbose_name or self.get_sub_attr(field_info.attr_name)
+            field_info.verbose_name = field_info.verbose_name or field_info.attr_name
+            field_info.help_text = field_info.help_text or self.get_sub_attr(field_info.attr_name, 'help_text')
             return field_info
 
         model, meta, field_names = self.model, self._meta, self._field_names
@@ -408,7 +408,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
         return {
             'name': field_info.verbose_name,
             'value': value,
-            'help_text': field_info.help_text,
+            'help_text': field_info.help_text or None,
             'extra': self.extra_field_info.get(field_info.attr_name, {})
         }
 
@@ -451,6 +451,7 @@ class FieldInfo(object):
         if isinstance(self.attr_name, tuple):
             if len(self.attr_name) == 2:
                 self.verbose_name, self.attr_name = self.attr_name
+                self.help_text = False
             elif len(self.attr_name) == 3:
                 self.verbose_name, self.attr_name, self.help_text = self.attr_name
             else:
