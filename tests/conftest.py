@@ -1,6 +1,7 @@
 import os
 import pytest
-
+from django.core.handlers.base import BaseHandler
+from django.core.handlers.wsgi import WSGIRequest
 from django.db import transaction
 from django.test import RequestFactory
 
@@ -41,6 +42,15 @@ current_response = CurrentResponse()
 class SimpleRequestFactory(RequestFactory):
     def __call__(self, url='/'):
         return self.get(url)
+
+    def request(self, **request):
+        handler = BaseHandler()
+        handler.load_middleware()
+        r = WSGIRequest(self._base_environ(**request))
+        for middleware_method in handler._request_middleware:
+            if middleware_method(r):
+                raise Exception('error on middleware {}'.format(middleware_method))
+        return r
 
 
 @pytest.yield_fixture

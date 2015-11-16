@@ -12,3 +12,8 @@ class Article(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Section(models.Model):
+    article = models.ForeignKey(Article, on_delete=models.PROTECT)
+    text = models.TextField(null=True)
