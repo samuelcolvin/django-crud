@@ -32,9 +32,6 @@ class RichViewMixin:
         self._meta = self.model._meta
         super(RichViewMixin, self).__init__(*args, **kwargs)
 
-    def back_url(self):
-        return self.request.META.get('HTTP_REFERER')
-
     def getattr(self, name, alt=AttrCrudError):
         if hasattr(self, name):
             return getattr(self, name)

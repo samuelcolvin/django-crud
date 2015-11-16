@@ -9,5 +9,6 @@ env/
 .idea
 
 *.sqlite3
-system_tests/demo/static/libs/
-system_tests/staticfiles/
+example_site/demo/static/libs/
+example_site/staticfiles/
+tests/.cache/
