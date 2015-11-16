@@ -22,7 +22,8 @@ INSTALLED_APPS = (
 #     'django.middleware.security.SecurityMiddleware',
 # )
 
-# ROOT_URLCONF = 'demo.urls'
+ROOT_URLCONF = 'tests.settings'
+urlpatterns = []
 
 context_processors = (
     # 'django.template.context_processors.debug',

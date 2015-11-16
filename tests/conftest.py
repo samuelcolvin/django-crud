@@ -25,7 +25,7 @@ def db(db_setup):
 
 
 @pytest.fixture
-def request():
+def http_request():
     def request_factory(url='/'):
         return RequestFactory().get(url)
     return request_factory

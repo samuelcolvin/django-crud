@@ -2,11 +2,11 @@ import pytest
 from django.db import models
 
 from django_crud.rich_views import RichViewMixin
-from django_crud.exceptions import AttrCrudError, SetupCrudError
+from django_crud.exceptions import AttrCrudError, SetupCrudError, ReverseCrudError
 from .models import Article
 
 
-def test_rich_view_getattr():
+def test_getattr():
     class RV(RichViewMixin):
         model = Article
         thing = 'foo'
@@ -17,31 +17,33 @@ def test_rich_view_getattr():
         rv.getattr('thing2')
 
 
-def test_rich_view_getattr_object():
+def test_getattr_object():
     class Foo:
         bar = 'foo.bar'
 
     class RV(RichViewMixin):
         model = Article
         object = Foo()
-    rv = RV()
-    assert rv.getattr('bar') == 'foo.bar'
+    assert RV().getattr('bar') == 'foo.bar'
 
 
-def test_rich_view_buttons():
+@pytest.mark.parametrize('input,expected', [
+    (None, []),
+    ([{'url': None}], []),
+    ([{'url': '/whatever'}], [{'url': '/whatever'}]),
+    ([{'url': 'func|make_url'}], [{'url': '/any/where'}]),
+])
+def test_buttons(input, expected):
     class RV(RichViewMixin):
         model = Article
 
         def make_url(self):
             return '/any/where'
     rv = RV()
-    assert rv.process_buttons(None) == []
-    assert rv.process_buttons([{'url': None}]) == []
-    assert rv.process_buttons([{'url': '/whatever'}]) == [{'url': '/whatever'}]
-    assert rv.process_buttons([{'url': 'func|make_url'}]) == [{'url': '/any/where'}]
+    assert rv.process_buttons(input) == expected
 
 
-def test_rich_view_buttons_wrong():
+def test_buttons_wrong():
     class RV(RichViewMixin):
         model = Article
     rv = RV()
@@ -50,7 +52,7 @@ def test_rich_view_buttons_wrong():
         rv.process_buttons([{'foo': 'bar'}]) == []
 
 
-def test_rich_view_buttons_get_absolute_url():
+def test_buttons_get_absolute_url():
     class Thing(models.Model):
         name = models.CharField()
 
@@ -59,22 +61,20 @@ def test_rich_view_buttons_get_absolute_url():
 
     class RV(RichViewMixin):
         model = Thing
-    rv = RV()
-    assert rv.process_buttons([{'url': Thing()}]) == [{'url': '/xyz/'}]
+    assert RV().process_buttons([{'url': Thing()}]) == [{'url': '/xyz/'}]
 
 
-def test_rich_view_buttons_no_get_absolute_url():
+def test_buttons_no_get_absolute_url():
     class Thing(models.Model):
         name = models.CharField()
 
     class RV(RichViewMixin):
         model = Thing
-    rv = RV()
     with pytest.raises(AttrCrudError):
-        rv.process_buttons([{'url': Thing()}])
+        RV().process_buttons([{'url': Thing()}])
 
 
-def test_rich_view_buttons_drop_down():
+def test_buttons_drop_down():
     class RV(RichViewMixin):
         model = Article
 
@@ -86,3 +86,21 @@ def test_rich_view_buttons_drop_down():
     rv = RV()
     assert rv.process_buttons([{'dropdown': 'func|get_dropdown'}]) == [{'dropdown': [{'url': '/x'}, {'url': '/y'}]}]
     assert rv.process_buttons([{'dropdown': [{'url': '/a'}]}]) == [{'dropdown': [{'url': '/a'}]}]
+
+
+def test_buttons_rev_exc():
+    class RV(RichViewMixin):
+        model = Article
+    with pytest.raises(ReverseCrudError):
+        RV().process_buttons([{'url': 'rev|whatever'}])
+
+
+def test_buttons_rev(mocker):
+    def fake_reverse(viewname, args=None, kwargs=None):
+        assert viewname == 'whatever'
+        return '/fake_url/'
+    mocker.patch('django_crud.rich_views.reverse', fake_reverse)
+
+    class RV(RichViewMixin):
+        model = Article
+    assert RV().process_buttons([{'url': 'rev|whatever'}]) == [{'url': '/fake_url/'}]

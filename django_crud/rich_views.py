@@ -62,19 +62,35 @@ class RichViewMixin:
             return [self.process_buttons(button) for button in button_group if self.check_show_button(button)]
         return self.process_button(button_group)
 
-    def get_url(self, v):
-        if isinstance(v, str) and v.startswith('func|'):
-            v = v.split('|')[1]
-            value = self.getattr(v)()
-        else:
-            value = v
-
-        if isinstance(value, models.Model):
+    def get_url(self, value):
+        if isinstance(value, str):
+            if value.startswith('func|'):
+                value = self.getattr(value[5:])()
+            elif value.startswith('rev|'):
+                value = self.get_rev_url(value[4:], getattr(self, 'object', None))
+        elif isinstance(value, models.Model):
             if hasattr(value, 'get_absolute_url'):
                 return value.get_absolute_url()
             else:
                 raise AttrCrudError('Model instance "{!r}" has no "get_absolute_url" method'.format(value))
         return value
+
+    def get_rev_url(self, view_name, obj=None):
+        rev_tries = [{'viewname': view_name}]
+        if isinstance(obj, models.Model):
+            rev_tries.append({'viewname': view_name, 'args': (obj.pk,)})
+
+        url = None
+        for rev_try in rev_tries:
+            try:
+                url = reverse(**rev_try)
+            except NoReverseMatch:
+                pass
+            else:
+                break
+        if url is None:
+            raise ReverseCrudError('No reverse found for "{}"'.format(view_name))
+        return url
 
     def process_button(self, button):
         if isinstance(button, str):
@@ -110,6 +126,7 @@ class RichViewMixin:
         :param prop_name: name of property to get, typically "short_description"
         :return: property value or None
         """
+        attr_name = attr_name.split('|', 1)[-1]
         if obj:
             attr = getattr(obj, attr_name, None)
         else:
@@ -385,19 +402,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
         if field_info.detail_view_link:
             url = self.get_detail_url(obj)
         elif field_info.rev_view_name and hasattr(value, 'pk'):
-            rev_tries = [
-                {'viewname': field_info.rev_view_name},
-                {'viewname': field_info.rev_view_name, 'args': (value.pk,)},
-            ]
-            for rev_try in rev_tries:
-                try:
-                    url = reverse(**rev_try)
-                except NoReverseMatch:
-                    pass
-                else:
-                    break
-            if url is None:
-                raise ReverseCrudError('No reverse found for "%s"' % field_info.rev_view_name)
+            url = self.get_rev_url(field_info.rev_view_name, value)
 
         if field_info.is_func:
             value = self.format_value(value, field_info.field)

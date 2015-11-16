@@ -176,14 +176,14 @@ class RichController(VanillaController):
     create_template_name = update_template_name = 'crud/edit.jinja'
     delete_template_name = 'crud/delete.jinja'
     list_view_buttons = [
-        'create_item_button'
+        'func|create_item_button'
     ]
     list_display_items = []
     detail_display_items = []
 
     detail_view_buttons = [
-        'update_item_button',
-        'delete_item_button',
+        'func|update_item_button',
+        'func|delete_item_button',
     ]
 
     def list_view_init_handler(self, view_cls):
