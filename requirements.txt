@@ -3,4 +3,8 @@ django-extensions==1.5.9
 django-jinja==1.4.1
 django-jinja-bootstrap-form==4.1.0
 grablib==0.1.9
+
 pytest==2.8.2
+codecov==1.6.3
+coverage==4.0.2
+flake8==2.5.0

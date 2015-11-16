@@ -1,10 +1,11 @@
+import os
 import pytest
 
-import os
+from django.test import RequestFactory
 
 
 def pytest_configure():
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'unit_tests.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
     import django
     django.setup()
 
@@ -18,6 +19,13 @@ def db_setup():
 @pytest.yield_fixture
 def db(db_setup):
     from django.db import transaction
-    sid = transaction.savepoint()
-    yield None
-    transaction.savepoint_rollback(sid)
+    with transaction.atomic():
+        yield None
+        transaction.set_rollback(True)
+
+
+@pytest.fixture
+def request():
+    def request_factory(url='/'):
+        return RequestFactory().get(url)
+    return request_factory

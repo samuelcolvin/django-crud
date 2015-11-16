@@ -1,6 +1,5 @@
 SECRET_KEY = 'testing'
 DEBUG = True
-# ALLOWED_HOSTS = []
 
 INSTALLED_APPS = (
     'django.contrib.auth',
@@ -10,7 +9,7 @@ INSTALLED_APPS = (
     'django_jinja',
     'bootstrapform_jinja',
     'django_crud',
-    'unit_tests',
+    'tests',
 )
 
 # MIDDLEWARE_CLASSES = (
@@ -20,7 +19,6 @@ INSTALLED_APPS = (
 #     'django.contrib.auth.middleware.AuthenticationMiddleware',
 #     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
 #     'django.contrib.messages.middleware.MessageMiddleware',
-#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 #     'django.middleware.security.SecurityMiddleware',
 # )
 
@@ -44,15 +42,7 @@ TEMPLATES = [
             'lstrip_blocks': True,
             'context_processors': context_processors
         },
-    },
-    # {
-    #     'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    #     'DIRS': [],
-    #     'APP_DIRS': True,
-    #     'OPTIONS': {
-    #         'context_processors': context_processors
-    #     },
-    # },
+    }
 ]
 
 BASE_TEMPLATE = 'base.jinja'
@@ -63,10 +53,4 @@ DATABASES = {
         'NAME': ':memory:',
     }
 }
-#
-# LANGUAGE_CODE = 'en-gb'
-# TIME_ZONE = 'UTC'
-# USE_I18N = True
-# USE_L10N = True
-# USE_TZ = True
 STATIC_URL = '/static/'

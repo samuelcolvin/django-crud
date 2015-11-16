@@ -182,7 +182,7 @@ class FormatMixin:
     def fmt_time(self, value):
         return time_format(value, 'TIME_FORMAT')
 
-    def format_value(self, value, field=None):
+    def format_value(self, value, field=None):  # noqa, cyclomatic complexity > 10
         if callable(value):
             value = value()
         elif value in (None, ''):
@@ -328,6 +328,15 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                     meta = model._meta
                     field_names = [f.name for f in meta.fields]
 
+        self._find_verbose_name(field_info, model, attr_name_part)
+        self._find_help_text(field_info, model, attr_name_part)
+
+        # make TextFields "long"
+        if field_info.is_long is None and isinstance(field_info.field, models.TextField):
+            field_info.is_long = True
+        return field_info
+
+    def _find_verbose_name(self, field_info, model, attr_name_part):
         # find verbose name if it's None so far
         if field_info.verbose_name is None:
             # priority_short_description has priority over field.verbose_name even when it's on a related model
@@ -340,7 +349,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                 if not field_info.verbose_name:
                     field_info.verbose_name = field_info.attr_name
 
-        # find help text if it's None so far
+    def _find_help_text(self, field_info, model, attr_name_part):
         if field_info.help_text is None:
             field_info.help_text = self.get_sub_attr(attr_name_part, model, 'priority_help_text')
             if not field_info.help_text:
@@ -348,11 +357,6 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                     field_info.help_text = field_info.field.help_text
                 else:
                     field_info.help_text = self.get_sub_attr(attr_name_part, model, 'help_text')
-
-        # make TextFields "long"
-        if field_info.is_long is None and isinstance(field_info.field, models.TextField):
-            field_info.is_long = True
-        return field_info
 
     @staticmethod
     def _split_attr_name(attr_name):
