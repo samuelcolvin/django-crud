@@ -19,7 +19,7 @@ class CtrlViewMixin:
         """
         unchanged from super method except for the 4 marked lines below
         """
-        for key in initkwargs:
+        for key in initkwargs:  # pragma: no cover
             if key in cls.http_method_names:
                 raise TypeError("You tried to pass in the %s method name as a "
                                 "keyword argument to %s(). Don't do that."
