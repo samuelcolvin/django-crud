@@ -17,7 +17,7 @@ class ArticleControllerMore(RichController):
     ]
 
     detail_display_items = [
-        ('The Title', 'title'),
+        'title',
         'body',
         'slug',
     ]
