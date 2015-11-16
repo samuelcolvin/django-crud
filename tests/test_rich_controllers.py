@@ -158,3 +158,49 @@ def test_create_view_post_missing(db, views, http_request):
     r = detail_view.callback(http_request.post('/root/create/', data))
     assert_contains(r, '<span class="help-block error-msg">This field is required.</span>')
     assert Article.objects.count() == 0
+
+
+def test_update_view_get(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[3]
+    art = Article.objects.create(title='_title_', body='_body_')
+    r = detail_view.callback(http_request('/root/update/{}/'.format(art.pk)), pk=art.pk)
+    assert_contains(r, 'input class=" form-control" id="id_title" maxlength="30" name="title" '
+                       'type="text" value="_title_" />')
+    assert_not_contains(r, '<span class="help-block error-msg">This field is required.</span>')
+    assert len(current_response.context['form'].fields) == 3
+
+
+def test_update_view_post(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[3]
+    art = Article.objects.create(title='_title', body='_body_')
+    assert Article.objects.count() == 1
+    data = {'title': '_title_2', 'body': '_body_2'}
+    r = detail_view.callback(http_request.post('/root/update/{}/'.format(art.pk), data), pk=art.pk)
+    assert_redirects(r, '/root/details/{}/'.format(art.pk))
+    assert Article.objects.count() == 1
+    art = Article.objects.get()
+    assert art.title == '_title_2'
+    assert art.body == '_body_2'
+    assert art.slug == ''
+
+
+def test_delete_view_get(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[4]
+    art = Article.objects.create(title='_title_', body='_body_')
+    assert Article.objects.count() == 1
+    r = detail_view.callback(http_request('/root/delete/{}/'.format(art.pk)), pk=art.pk)
+    assert_contains(r, '<input type="submit" class="btn btn-danger" value="Confirm"/>')
+    assert Article.objects.count() == 1
+
+
+def test_delete_view_post(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[4]
+    art = Article.objects.create(title='_title_', body='_body_')
+    assert Article.objects.count() == 1
+    r = detail_view.callback(http_request.post('/root/delete/{}/'.format(art.pk)), pk=art.pk)
+    assert_redirects(r, '/root/list/')
+    assert Article.objects.count() == 0
