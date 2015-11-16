@@ -35,7 +35,7 @@ context_processors = (
 
 TEMPLATES = [
     {
-        'BACKEND': 'django_jinja.backend.Jinja2',
+        'BACKEND': 'tests.jinja_backend.Jinja2WithContext',
         'APP_DIRS': True,
         'OPTIONS': {
             'match_extension': '.jinja',

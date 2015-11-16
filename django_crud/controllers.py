@@ -41,7 +41,7 @@ class VanillaController:
     def list_view_parents(self):
         return CtrlListView,
 
-    def list_view_init_handler(self, view_cls):
+    def list_view_init_handler(self, view_cls):  # pragma: no cover
         pass
 
     def list_view(self):
@@ -54,7 +54,7 @@ class VanillaController:
     def detail_view_parents(self):
         return CtrlDetailView,
 
-    def detail_view_init_handler(self, view_cls):
+    def detail_view_init_handler(self, view_cls):  # pragma: no cover
         pass
 
     def detail_view(self):

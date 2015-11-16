@@ -1,6 +1,7 @@
 import os
 import pytest
 
+from django.db import transaction
 from django.test import RequestFactory
 
 
@@ -18,14 +19,31 @@ def db_setup():
 
 @pytest.yield_fixture
 def db(db_setup):
-    from django.db import transaction
     with transaction.atomic():
         yield None
         transaction.set_rollback(True)
 
 
-@pytest.fixture
+class CurrentResponse:
+    # TODO this could be done much more elegantly
+    _ctx = None
+
+    def set(self, ctx):
+        self._ctx = ctx and dict(ctx)
+
+    @property
+    def context(self):
+        return self._ctx
+
+current_response = CurrentResponse()
+
+
+class SimpleRequestFactory(RequestFactory):
+    def __call__(self, url='/'):
+        return self.get(url)
+
+
+@pytest.yield_fixture
 def http_request():
-    def request_factory(url='/'):
-        return RequestFactory().get(url)
-    return request_factory
+    yield SimpleRequestFactory()
+    current_response.set(None)

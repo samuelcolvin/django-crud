@@ -2,6 +2,7 @@ import re
 import pytest
 from django_crud.controllers import RichController
 from .models import Article
+from .conftest import current_response
 
 
 class ArticleController(RichController):
@@ -63,6 +64,11 @@ def assert_not_contains(r, text, status_code=200, html=False):
     assert text not in content, '"{}" unexpectedly found in response'.format(text)
 
 
+def assert_redirects(r, url):
+    assert r.status_code == 302
+    assert r.url == url
+
+
 def test_list_view_empty_empty(db, views, http_request):
     list_view = views[0]
     r = list_view.callback(http_request('/article/list/'))
@@ -118,8 +124,37 @@ def test_detail_view_more(db, http_request):
     views, _, _ = ArticleControllerMore.as_views('test')
     detail_view = views[1]
     r = detail_view.callback(http_request('/article/details/%d/' % art1.id), pk=art1.pk)
-    print_response(r, html=True)
     assert_contains(r, '<div class="one-line detail-info">\narticle 1\n</div>', html=True)
     assert_contains(r, '<div class="one-line detail-info">\narticle__1\n</div>', html=True)
     assert_contains(r, 'data-container="body" title="the title of the article"')
     assert_contains(r, '<p class="no-margin">this is the first body</p>')
+
+
+def test_create_view_get(views, http_request):
+    detail_view = views[2]
+    r = detail_view.callback(http_request('/article/create/'))
+    assert_contains(r, '<input class=" form-control" id="id_title" maxlength="30" name="title" type="text" />')
+    assert_not_contains(r, '<span class="help-block error-msg">This field is required.</span>')
+    assert len(current_response.context['form'].fields) == 3
+
+
+def test_create_view_post(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[2]
+    data = {'title': '_title_', 'body': '_body_'}
+    r = detail_view.callback(http_request.post('/root/create/', data))
+    assert_redirects(r, '/root/list/')
+    assert Article.objects.count() == 1
+    art = Article.objects.get()
+    assert art.title == '_title_'
+    assert art.body == '_body_'
+    assert art.slug == ''
+
+
+def test_create_view_post_missing(db, views, http_request):
+    assert Article.objects.count() == 0
+    detail_view = views[2]
+    data = {'title': '_title_'}
+    r = detail_view.callback(http_request.post('/root/create/', data))
+    assert_contains(r, '<span class="help-block error-msg">This field is required.</span>')
+    assert Article.objects.count() == 0
