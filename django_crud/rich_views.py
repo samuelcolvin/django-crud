@@ -353,7 +353,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
                     field_info.help_text = self.get_sub_attr(attr_name_part, model, 'help_text')
 
         # make TextFields "long"
-        if isinstance(field_info.field, models.TextField):
+        if field_info.is_long is None and isinstance(field_info.field, models.TextField):
             field_info.is_long = True
         return field_info
 
@@ -442,7 +442,7 @@ class FieldInfo(object):
     help_text = None
     rev_view_name = None
     detail_view_link = False
-    is_long = False
+    is_long = None
     is_func = False
 
     def __init__(self, attr_name):
@@ -458,6 +458,9 @@ class FieldInfo(object):
         if self.attr_name.startswith('long|'):
             self.attr_name = self.attr_name[5:]
             self.is_long = True
+        elif self.attr_name.startswith('short|'):
+            self.attr_name = self.attr_name[6:]
+            self.is_long = False
 
         if self.attr_name.startswith('link|'):
             self.attr_name = self.attr_name[5:]
