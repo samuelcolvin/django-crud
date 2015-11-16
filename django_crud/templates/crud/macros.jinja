@@ -36,19 +36,19 @@
 {% endif %}
 {% endmacro %}
 
-{% macro _buttons(button_menu) %}
-  {% if button_menu is iterable and button_menu|length > 0 %}
-    {% if button_menu[0] is not mapping %}
-      {% for button in button_menu %}
+{% macro _buttons(btns) %}
+  {% if btns is iterable and btns|length > 0 %}
+    {% if btns[0] is not mapping %}
+      {% for button in btns %}
         {{ _buttons(button) }}
       {% endfor %}
     {% else %}
       <div class="btn-group">
-        {% for button in button_menu %}
+        {% for button in btns %}
           {% if button is not mapping %}
             menu
           {% elif button.dropdown %}
-            {% if button_menu|length > 1 %}
+            {% if btns|length > 1 %}
               <div class="btn-group dropdown">{% endif %}
           <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
             {{ button.text }}
@@ -61,7 +61,7 @@
                 </li>
             {% endfor %}
           </ul>
-          {% if button_menu|length > 1 %}</div>{% endif %}
+          {% if btns|length > 1 %}</div>{% endif %}
           {% else %}
             {% if button.css_class %}
               {{ show_link(button, "btn btn-default " + button.css_class) }}
@@ -75,9 +75,9 @@
   {% endif %}
 {% endmacro %}
 
-{% macro buttons(button_menu) %}
+{% macro buttons(btns) %}
   <div class="buttons">
-    {{ _buttons(button_menu) }}
+    {{ _buttons(btns) }}
   </div>
 {% endmacro %}
 

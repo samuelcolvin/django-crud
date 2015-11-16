@@ -35,12 +35,13 @@ class RichViewMixin:
     def getattr(self, name, alt=AttrCrudError):
         if hasattr(self, name):
             return getattr(self, name)
-        elif hasattr(self, 'object'):
+        elif hasattr(self, 'object') and hasattr(self.object, name):
             return getattr(self.object, name)
-        elif isinstance(alt, type) and issubclass(alt, Exception):
+
+        if isinstance(alt, type) and issubclass(alt, Exception):
             raise alt('%s not found on %s instance or self.object' % (name, self.__class__.__name__))
         else:
-            return None
+            return alt
 
     def check_show_button(self, button):
         if button is None or ('url' in button and button['url'] is None):
@@ -61,10 +62,12 @@ class RichViewMixin:
             return [self.process_buttons(button) for button in button_group if self.check_show_button(button)]
         return self.process_button(button_group)
 
-    def get_url(self, text):
-        if text.startswith('func|'):
-            text = text.split('|')[1]
-        value = maybe_call(self.getattr(text))
+    def get_url(self, v):
+        if isinstance(v, str) and v.startswith('func|'):
+            v = v.split('|')[1]
+            value = self.getattr(v)()
+        else:
+            value = v
 
         if isinstance(value, models.Model):
             if hasattr(value, 'get_absolute_url'):
@@ -86,7 +89,7 @@ class RichViewMixin:
             if isinstance(button['dropdown'], str) and button['dropdown'].startswith('func|'):
                 fname = button['dropdown'].split('|', 1)[1]
                 button['dropdown'] = self.getattr(fname)()
-            button['dropdown'] = map(self.process_button, button['dropdown'])
+            button['dropdown'] = list(map(self.process_button, button['dropdown']))
         else:
             raise SetupCrudError('neither "url" nor "dropdown" found in button: {!r}'.format(button))
         return button
@@ -116,9 +119,6 @@ class RichViewMixin:
             v = getattr(attr, prop_name, None)
             if v is not None:
                 return v.format(**self.label_ctx)
-
-    def _process_local_function(self, field_info, obj):
-        return getattr(self, field_info.attr_name)(obj)
 
     def get_buttons(self):
         return self.buttons
