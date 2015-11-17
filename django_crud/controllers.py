@@ -1,6 +1,6 @@
-from django_crud.forms import RichCrudForm
 import re
 
+from django.utils.functional import cached_property
 from django.contrib import messages
 from django.conf.urls import url, include
 from django.db.models import ProtectedError
@@ -9,9 +9,10 @@ from django.shortcuts import redirect
 from django.utils.decorators import classonlymethod
 from django.utils.translation import ugettext_lazy as _
 
-from .rich_views import RichListViewMixin, RichDetailViewMixin, RichCreateViewMixin, RichUpdateViewMixin, \
-    RichDeleteViewMixin
+from .rich_views import (RichListViewMixin, RichDetailViewMixin, RichCreateViewMixin, RichUpdateViewMixin,
+                         RichDeleteViewMixin)
 from .base_views import CtrlListView, CtrlDetailView, CtrlCreateView, CtrlUpdateView, CtrlDeleteView
+from django_crud.forms import RichCrudForm
 
 
 class VanillaController:
@@ -27,6 +28,12 @@ class VanillaController:
     form_factory_kwargs = {
         'exclude': ('id',)  # either fields or exclude are required these days
     }
+
+    list_url = r'list/$'
+    detail_url = r'details/(?P<pk>\d+)/$'
+    create_url = r'create/$'
+    update_url = r'update/(?P<pk>\d+)/$'
+    delete_url = r'delete/(?P<pk>\d+)/$'
 
     def __init__(self):
         self.request = self.args = self.kwargs = None
@@ -137,6 +144,9 @@ class VanillaController:
             modal_template_name = self.modal_edit_template_name  # TODO
         return TmpDeleteView.as_view(self)
 
+    def get_list_url(self, list_view, name_prefix):
+        return url(r'list/$', list_view, name='%s-list' % name_prefix)
+
     @classonlymethod
     def as_views(cls, name_prefix):
         ctrl = cls()
@@ -144,29 +154,39 @@ class VanillaController:
 
         list_view = ctrl.list_view and ctrl.list_view()
         if list_view:
-            url_patterns.append(url(r'list/$', list_view, name='%s-list' % name_prefix))
+            url_patterns.append(url(cls.list_url, list_view, name='%s-list' % name_prefix))
 
         detail_view = ctrl.detail_view and ctrl.detail_view()
         if detail_view:
-            url_patterns.append(url(r'details/(?P<pk>\d+)/$', detail_view, name='%s-details' % name_prefix))
+            url_patterns.append(url(cls.detail_url, detail_view, name='%s-details' % name_prefix))
 
         create_view = ctrl.create_view and ctrl.create_view()
         if create_view:
-            url_patterns.append(url(r'create/$', create_view, name='%s-create' % name_prefix))
+            url_patterns.append(url(cls.create_url, create_view, name='%s-create' % name_prefix))
 
         update_view = ctrl.update_view and ctrl.update_view()
         if update_view:
-            url_patterns.append(url(r'update/(?P<pk>\d+)/$', update_view, name='%s-update' % name_prefix))
+            url_patterns.append(url(cls.update_url, update_view, name='%s-update' % name_prefix))
 
         delete_view = ctrl.delete_view and ctrl.delete_view()
         if delete_view:
-            url_patterns.append(url(r'delete/(?P<pk>\d+)/$', delete_view, name='%s-delete' % name_prefix))
+            url_patterns.append(url(cls.delete_url, delete_view, name='%s-delete' % name_prefix))
 
         return include(url_patterns)
 
+    @cached_property
+    def crud_url_patterns(self):
+        urls = []
+        for url_attr in ['list_url', 'detail_url', 'create_url', 'update_url', 'delete_url']:
+            url = getattr(self, url_attr).strip('$/')
+            url = re.sub(r'\?P<\w*?>', '', url)
+            url = re.sub(r'[\(\)]', '', url)
+            urls.append(url)
+        return '/({})/$'.format('|'.join(urls))
+
     def relative_url(self, rel_url):
         new_url_ending = '/%s/' % rel_url.strip('/')
-        return re.sub('/(list|details/\d+|create|update/\d+|delete/\d+)/$', new_url_ending, self.request.path)
+        return re.sub(self.crud_url_patterns, new_url_ending, self.request.path)
 
 
 # noinspection PyMethodMayBeStatic

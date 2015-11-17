@@ -10,7 +10,7 @@ CRUD controllers for django: Create, Retrieve, Update, Delete, List
 from django.core.checks import Error, register
 
 __title__ = 'django_crud'
-__version__ = '0.1.0'
+__version__ = '0.1'
 __author__ = 'Samuel Colvin'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2015 Samuel Colvin'
