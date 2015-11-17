@@ -4,6 +4,7 @@ __pycache__/
 # C extensions
 *.so
 .coverage
+*.egg-info
 
 # Distribution / packaging
 env/

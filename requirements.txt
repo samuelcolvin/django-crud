@@ -1,9 +1,13 @@
+# required for django_jinja
 Django==1.8.6
-django-extensions==1.5.9
 django-jinja==1.4.1
 django-jinja-bootstrap-form==4.1.1
+
+# required for example_site
+django-extensions==1.5.9
 grablib==0.1.9
 
+# required for tests
 pytest==2.8.2
 pytest-cov==2.2.0
 pytest-mock==0.8.1
