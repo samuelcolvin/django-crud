@@ -152,25 +152,20 @@ class VanillaController:
         ctrl = cls()
         url_patterns = []
 
-        list_view = ctrl.list_view and ctrl.list_view()
-        if list_view:
-            url_patterns.append(url(cls.list_url, list_view, name='%s-list' % name_prefix))
+        if ctrl.list_view:
+            url_patterns.append(url(ctrl.list_url, ctrl.list_view(), name='%s-list' % name_prefix))
 
-        detail_view = ctrl.detail_view and ctrl.detail_view()
-        if detail_view:
-            url_patterns.append(url(cls.detail_url, detail_view, name='%s-details' % name_prefix))
+        if ctrl.detail_view:
+            url_patterns.append(url(cls.detail_url, ctrl.detail_view(), name='%s-details' % name_prefix))
 
-        create_view = ctrl.create_view and ctrl.create_view()
-        if create_view:
-            url_patterns.append(url(cls.create_url, create_view, name='%s-create' % name_prefix))
+        if ctrl.create_view:
+            url_patterns.append(url(cls.create_url, ctrl.create_view(), name='%s-create' % name_prefix))
 
-        update_view = ctrl.update_view and ctrl.update_view()
-        if update_view:
-            url_patterns.append(url(cls.update_url, update_view, name='%s-update' % name_prefix))
+        if ctrl.update_view:
+            url_patterns.append(url(cls.update_url, ctrl.update_view(), name='%s-update' % name_prefix))
 
-        delete_view = ctrl.delete_view and ctrl.delete_view()
-        if delete_view:
-            url_patterns.append(url(cls.delete_url, delete_view, name='%s-delete' % name_prefix))
+        if ctrl.delete_view:
+            url_patterns.append(url(cls.delete_url, ctrl.delete_view(), name='%s-delete' % name_prefix))
 
         return include(url_patterns)
 
@@ -231,7 +226,8 @@ class RichController(VanillaController):
         return RichCreateViewMixin, CtrlCreateView
 
     def create_item_button(self):
-        return self.relative_url('create')
+        if self.create_view:
+            return self.relative_url('create')
     create_item_button.short_description = _('Create {verbose_name}')
 
     @property
@@ -239,7 +235,8 @@ class RichController(VanillaController):
         return RichUpdateViewMixin, CtrlUpdateView
 
     def update_item_button(self):
-        return self.relative_url('update/{pk}'.format(**self.kwargs))
+        if self.update_view:
+            return self.relative_url('update/{pk}'.format(**self.kwargs))
     update_item_button.short_description = _('Update {verbose_name}')
 
     @property
@@ -247,5 +244,6 @@ class RichController(VanillaController):
         return RichDeleteViewMixin, CtrlDeleteView
 
     def delete_item_button(self):
-        return self.relative_url('delete/{pk}'.format(**self.kwargs))
+        if self.delete_view:
+            return self.relative_url('delete/{pk}'.format(**self.kwargs))
     delete_item_button.short_description = _('Delete {verbose_name}')

@@ -15,7 +15,7 @@ def test_vsimple():
         model = Article
         display_items = ['title']
     dm = DM()
-    assert list(dm.gen_short_props(Article())) == [{'value': '', 'help_text': 'the title of the article',
+    assert list(dm.gen_short_props(Article())) == [{'value': '&mdash;', 'help_text': 'the title of the article',
                                                     'extra': {}, 'name': 'title'}]
     assert list(dm.gen_long_props(Article())) == []
 
@@ -23,9 +23,9 @@ def test_vsimple():
 def test_help_text():
     class DM(ItemDisplayMixin):
         model = Article
-        display_items = [('the title', 'title', 'ht')]
+        display_items = [('T', 'title', 'ht')]
     dm = DM()
-    assert list(dm.gen_short_props(Article())) == [{'value': '', 'help_text': 'ht', 'extra': {}, 'name': 'the title'}]
+    assert list(dm.gen_short_props(Article())) == [{'value': '&mdash;', 'help_text': 'ht', 'extra': {}, 'name': 'T'}]
     assert list(dm.gen_long_props(Article())) == []
 
 

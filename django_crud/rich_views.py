@@ -203,6 +203,7 @@ class FormatMixin:
         if callable(value):
             value = value()
         elif value in (None, ''):
+            print('fmt_none_empty', repr(self.fmt_none_empty(value)))
             return self.fmt_none_empty(value)
         elif field and len(field.choices) > 0:
             return self.fmt_field_choices(value, field)
@@ -404,7 +405,7 @@ class ItemDisplayMixin(FormatMixin, RichViewMixin):
         elif field_info.rev_view_name and hasattr(value, 'pk'):
             url = self.get_rev_url(field_info.rev_view_name, value)
 
-        if field_info.is_func:
+        if not field_info.is_func:
             value = self.format_value(value, field_info.field)
 
         if url:
